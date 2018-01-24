@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<project name="autofetch" default="compile" basedir=".">
+
+    <property file="user.build.properties"/>
+    <property file="build.properties"/>
+    
+    <property name="src.dir" value="src"/>
+    <property name="test.dir" value="test"/>
+    <property name="lib.dir" value="lib"/>
+    <property name="build.dir" value="build"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+	<property name="dist.dir" value="dist"/>
+	<property name="version" value="1.0beta"/>
+	<property name="javadoc.url.jse" value="http://java.sun.com/j2se/1.5.0/docs/api/"/>
+	<property name="dist.src.name" value="autofetch-${version}-src"/>
+
+    <!-- classpath for compiler -->
+    <path id="compile.classpath">
+		<fileset dir="${lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+    </path>
+
+    <target name="-init">
+        <tstamp/>
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${classes.dir}"/>
+		<mkdir dir="${dist.dir}"/>
+    </target>
+    
+    <target name="compile" depends="-init">
+        <javac debug="true" srcdir="${src.dir}" destdir="${classes.dir}" classpathref="compile.classpath"/>
+    </target>
+
+    <target name="dist" depends="compile">
+		<jar destfile="${dist.dir}/autofetch-${version}.jar" basedir="${classes.dir}"
+			excludes="org/hibernate/**, org/autofetch/hibernate/**"/>
+		<jar destfile="${dist.dir}/autofetch-hibernate-${version}.jar" basedir="${classes.dir}"
+		    includes="org/hibernate/**, org/autofetch/hibernate/**"/>
+    </target>
+    
+    <target name="javadoc" depends="-init">
+    	<javadoc classpathref="compile.classpath"
+                destdir="${build.dir}/api"
+                use="true"
+                protected="true"
+                version="true"
+                doctitle="Autofetch API Documentation (${version})"
+                windowtitle="Autofetch API Documentation"
+                link="${javadoc.url.jse}">
+                <packageset dir="${src.dir}" defaultexcludes="yes">
+                	<include name="org/autofetch/hibernate/**" />
+                    <include name="org/hibernate/**" />
+                </packageset>
+                <packageset dir="${src.dir}" defaultexcludes="yes">
+                    <include name="org/autofetch/**" />
+                </packageset>
+                <group title="Core API" packages="org.autofetch"/>
+                <group title="Hibernate Connector API" packages="org.hibernate:org.autofetch.hibernate"/>
+         </javadoc>
+    </target>
+
+    <target name="clean">
+        <delete dir="${classes.dir}"/>
+        <delete dir="${build.dir}"/>
+		<delete dir="${dist.dir}"/>
+    </target>
+    
+    <target name="dist-src">
+    	<zip zipfile="${dist.dir}/${dist.src.name}.zip">
+    		<zipfileset prefix="${dist.src.name}" dir=".">
+	    		<include name="${src.dir}/**" />
+				<include name="${lib.dir}/**" />
+				<include name="${test.dir}/**" />
+				<include name="build.xml" />
+				<include name="README.txt" />
+				<include name="COPYING.LESSER" />
+			</zipfileset>
+    	</zip>
+        <checksum file="${dist.dir}/${dist.src.name}.zip" algorithm="MD5" fileext=".md5.txt"/>
+    </target>
+
+</project>
