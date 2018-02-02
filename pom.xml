@@ -16,11 +16,13 @@
 		</resources>
 	</build>
 	<dependencies>
+	
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-core</artifactId>
-			<version>3.5.0-Final</version>
+			<version>3.6.0.Final</version>
 		</dependency>
+		
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
