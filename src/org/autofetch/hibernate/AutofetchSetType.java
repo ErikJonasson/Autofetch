@@ -22,6 +22,7 @@ import org.hibernate.collection.PersistentElementHolder;
 import org.hibernate.engine.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.type.SetType;
+import org.hibernate.type.TypeFactory.TypeScope;
 
 /**
  * Based on org.hibernate.type.SetType
@@ -31,9 +32,9 @@ import org.hibernate.type.SetType;
  */
 public class AutofetchSetType extends SetType {
 
-    public AutofetchSetType(String role, String propertyRef,
+    public AutofetchSetType(TypeScope typeScope, String role, String propertyRef,
             boolean isEmbeddedInXML) {
-        super(role, propertyRef, isEmbeddedInXML);
+        super(typeScope, role, propertyRef, isEmbeddedInXML);
     }
 
     @Override

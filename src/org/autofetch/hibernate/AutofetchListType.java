@@ -22,6 +22,7 @@ import org.hibernate.collection.PersistentElementHolder;
 import org.hibernate.engine.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.type.ListType;
+import org.hibernate.type.TypeFactory.TypeScope;
 
 /**
  * This class is based on org.hibernate.type.ListType.
@@ -30,9 +31,9 @@ import org.hibernate.type.ListType;
  */
 public class AutofetchListType extends ListType {
 
-    public AutofetchListType(String role, String propertyRef,
+    public AutofetchListType(TypeScope typeScope, String role, String propertyRef,
             boolean isEmbeddedInXML) {
-        super(role, propertyRef, isEmbeddedInXML);
+        super(typeScope, role, propertyRef, isEmbeddedInXML);
     }
 
     @Override

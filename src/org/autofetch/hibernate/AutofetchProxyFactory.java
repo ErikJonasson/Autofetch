@@ -33,6 +33,7 @@ import org.hibernate.mapping.Property;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.ProxyFactory;
 import org.hibernate.type.AbstractComponentType;
+import org.hibernate.type.CompositeType;
 
 /**
  * Based on org.hibernate.proxy.pojo.cglib.CGLIBProxyFactory
@@ -138,4 +139,10 @@ public class AutofetchProxyFactory implements ProxyFactory {
         
         return proxy;
     }
+
+	public void postInstantiate(String entityName, Class persistentClass, Set interfaces, Method getIdentifierMethod,
+			Method setIdentifierMethod, CompositeType componentIdType) throws HibernateException {
+		// TODO Auto-generated method stub
+		
+	}
 }
