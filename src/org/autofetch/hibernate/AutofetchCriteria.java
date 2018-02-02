@@ -227,6 +227,33 @@ public class AutofetchCriteria implements Criteria {
         return delegate.getAlias();
     }
 
+	public Criteria createAlias(String associationPath, String alias, int joinType, Criterion withClause)
+			throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria createCriteria(String associationPath, String alias, int joinType, Criterion withClause)
+			throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean isReadOnlyInitialized() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public boolean isReadOnly() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	public Criteria setReadOnly(boolean readOnly) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 //	@Override
 //	public Criteria createAlias(String arg0, String arg1, int arg2, Criterion arg3) throws HibernateException {
 //		// TODO Auto-generated method stub

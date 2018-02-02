@@ -147,7 +147,7 @@ public class AutofetchInitializeCollectionListener extends
             CollectionPersister persister, PersistentCollection collection,
             SessionImplementor source) throws HibernateException {
 
-        if (!source.getEnabledFilters().isEmpty()
+        if (source.getLoadQueryInfluencers().hasEnabledFilters()
                 && persister.isAffectedByEnabledFilters(source)) {
             return false;
         }
@@ -164,15 +164,15 @@ public class AutofetchInitializeCollectionListener extends
             final CacheKey ck = new CacheKey(id, persister.getKeyType(),
                     persister.getRole(), source.getEntityMode(), source
                             .getFactory());
-            Object ce = persister.getCache().get(ck, source.getTimestamp());
+            Object ce = persister.getCacheAccessStrategy().get(ck, source.getTimestamp());
 
             if (factory.getStatistics().isStatisticsEnabled()) {
                 if (ce == null) {
                     factory.getStatisticsImplementor().secondLevelCacheMiss(
-                            persister.getCache().getRegionName());
+                            persister.getCacheAccessStrategy().getRegion().getName());
                 } else {
                     factory.getStatisticsImplementor().secondLevelCacheHit(
-                            persister.getCache().getRegionName());
+                            persister.getCacheAccessStrategy().getRegion().getName());
                 }
 
             }
