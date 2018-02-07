@@ -35,7 +35,8 @@ import org.hibernate.ScrollableResults;
 import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Projection;
-import org.hibernate.impl.CriteriaImpl;
+import org.hibernate.internal.CriteriaImpl;
+import org.hibernate.sql.JoinType;
 import org.hibernate.transform.ResultTransformer;
 
 /**
@@ -250,6 +251,38 @@ public class AutofetchCriteria implements Criteria {
 	}
 
 	public Criteria setReadOnly(boolean readOnly) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria createAlias(String associationPath, String alias, JoinType joinType) throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria createAlias(String associationPath, String alias, JoinType joinType, Criterion withClause)
+			throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria createCriteria(String associationPath, JoinType joinType) throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria createCriteria(String associationPath, String alias, JoinType joinType) throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria createCriteria(String associationPath, String alias, JoinType joinType, Criterion withClause)
+			throws HibernateException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public Criteria addQueryHint(String hint) {
 		// TODO Auto-generated method stub
 		return null;
 	}

@@ -14,18 +14,25 @@
 package org.autofetch.hibernate;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.autofetch.hibernate.ExtentManager;
 import org.hibernate.EmptyInterceptor;
 import org.hibernate.Interceptor;
+import org.hibernate.InvalidMappingException;
 import org.hibernate.MappingException;
 import org.hibernate.cfg.AutofetchHbmBinder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.ExtendsQueueEntry;
+import org.hibernate.cfg.HbmBinder;
+import org.hibernate.cfg.MetadataSourceType;
 import org.hibernate.cfg.SettingsFactory;
 import org.hibernate.event.InitializeCollectionEventListener;
 import org.hibernate.event.LoadEventListener;
 import org.hibernate.util.CollectionHelper;
+import org.hibernate.util.xml.XmlDocument;
 
 /**
  * Based on org.hibernate.cfg.Configuration.
@@ -38,110 +45,132 @@ import org.hibernate.util.CollectionHelper;
  */
 public class AutofetchConfiguration extends Configuration {
 
-    private ExtentManager extentManager;
+	private ExtentManager extentManager;
 
-    public AutofetchConfiguration() {
-        super();
-        initialize();
-    }
+	public AutofetchConfiguration() {
+		super();
+		initialize();
+	}
 
-    public AutofetchConfiguration(SettingsFactory arg0) {
-        super(arg0);
-        initialize();
-    }
+	public AutofetchConfiguration(SettingsFactory arg0) {
+		super(arg0);
+		initialize();
+	}
 
-    @Override
-    protected void add(org.dom4j.Document doc) throws MappingException {
-        AutofetchHbmBinder.bindRoot(doc, createMappings(),
-                CollectionHelper.EMPTY_MAP);
-    }
+//	 @Override
+//	 protected void add(org.dom4j.Document doc) throws MappingException {
+//	 HbmBinder.bindRoot(doc, createMappings(),
+//	 CollectionHelper.EMPTY_MAP);
+//	 }
+	
 
-    @Override
-    protected org.dom4j.Document findPossibleExtends() {
-        //      Iterator iter = extendsQueue.iterator();
-        Iterator iter = extendsQueue.keySet().iterator();
-        while (iter.hasNext()) {
-            final ExtendsQueueEntry entry = (ExtendsQueueEntry) iter.next();
-            if (getClassMapping(entry.getExplicitName()) != null) {
-                // found
-                iter.remove();
-                return entry.getDocument();
-            } else if (getClassMapping(AutofetchHbmBinder.getClassName(entry
-                    .getExplicitName(), entry.getMappingPackage())) != null) {
-                // found
-                iter.remove();
-                return entry.getDocument();
-            }
-        }
-        return null;
-    }
-    
-    @Override
-    protected void reset() {
-        super.reset();
-        initialize();
-    }
-    
-    private void initialize() {
-        extentManager = new ExtentManager();
-        getEventListeners().setLoadEventListeners(new LoadEventListener[] {
-            new AutofetchLoadListener(extentManager) });
-        getEventListeners().setInitializeCollectionEventListeners(
-                new InitializeCollectionEventListener[] { 
-                        new AutofetchInitializeCollectionListener(
-                                extentManager) });
-        setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE,
-                extentManager));
-    }
+	
+//	public void processHbmXml(XmlDocument metadataXml, Set<String> entityNames) {
+//		try {
+//			HbmBinder.bindRoot(metadataXml, createMappings(), CollectionHelper.EMPTY_MAP, entityNames);
+//		} catch (MappingException me) {
+//			throw new InvalidMappingException(metadataXml.getOrigin().getType(), metadataXml.getOrigin().getName(), me);
+//		}
+//
+//		for (String entityName : entityNames) {
+//			if (annotatedClassesByEntityNameMap.containsKey(entityName)) {
+//				annotatedClasses.remove(annotatedClassesByEntityNameMap.get(entityName));
+//				annotatedClassesByEntityNameMap.remove(entityName);
+//			}
+//		}
+//	}
 
-    /**
-     * Ensures that any interceptor is wrapped with the AutofetchInterceptor.
-     */
-    @Override
-    public Configuration setInterceptor(Interceptor i) {
-        if (i instanceof AutofetchInterceptor) {
-            return super.setInterceptor(i);
-        } else {
-            AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
-            return super.setInterceptor(ai.copy(i));
-        }
-    }
-    
-    /**
-     * Ensures that the extent manager is set for any Autofetch
-     * listeners.
-     */
-    @Override
-    public void setListeners(String type, Object[] listeners) {
-        setExtentManager(listeners, extentManager);
-        super.setListeners(type, listeners);
-    }
-    
-    public ExtentManager getExtentManager() {
-        return extentManager;
-    }
+	// @Override
+	// protected org.dom4j.Document findPossibleExtends() {
+	// // Iterator iter = extendsQueue.iterator();
+	// Iterator iter = extendsQueue.keySet().iterator();
+	// while (iter.hasNext()) {
+	// final ExtendsQueueEntry entry = (ExtendsQueueEntry) iter.next();
+	// if (getClassMapping(entry.getExplicitName()) != null) {
+	// // found
+	// iter.remove();
+	// return entry.getDocument();
+	// } else if (getClassMapping(AutofetchHbmBinder.getClassName(entry
+	// .getExplicitName(), entry.getMappingPackage())) != null) {
+	// // found
+	// iter.remove();
+	// return entry.getDocument();
+	// }
+	// }
+	// return null;
+	// }
+	@Override
+	protected ExtendsQueueEntry findPossibleExtends() {
+		Iterator<ExtendsQueueEntry> itr = extendsQueue.keySet().iterator();
+		while (itr.hasNext()) {
+			final ExtendsQueueEntry entry = itr.next();
+			boolean found = getClassMapping(entry.getExplicitName()) != null || getClassMapping(
+					AutofetchHbmBinder.getClassName(entry.getExplicitName(), entry.getMappingPackage())) != null;
+			if (found) {
+				itr.remove();
+				return entry;
+			}
+		}
+		return null;
+	}
 
-    public void setExtentManager(ExtentManager em) {
-        this.extentManager = em;
-        // Propagate changes to listeners and interceptor
-        AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
-        ai.setExtentManager(em);
-        setExtentManager(
-                getEventListeners().getInitializeCollectionEventListeners(),
-                em);
-        setExtentManager(
-                getEventListeners().getLoadEventListeners(),
-                em);
-    }
-    
-    private void setExtentManager(Object[] listeners, ExtentManager em) {
-        for (Object listener : listeners) {
-            if (listener instanceof AutofetchInitializeCollectionListener) {
-                ((AutofetchInitializeCollectionListener)listener).setExtentManager(em);
-            }
-            if (listener instanceof AutofetchLoadListener) {
-                ((AutofetchLoadListener)listener).setExtentManager(em);
-            }
-        }
-    }
+	@Override
+	protected void reset() {
+		super.reset();
+		initialize();
+	}
+
+	private void initialize() {
+		extentManager = new ExtentManager();
+		getEventListeners().setLoadEventListeners(new LoadEventListener[] { new AutofetchLoadListener(extentManager) });
+		getEventListeners().setInitializeCollectionEventListeners(
+				new InitializeCollectionEventListener[] { new AutofetchInitializeCollectionListener(extentManager) });
+		setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE, extentManager));
+	}
+
+	/**
+	 * Ensures that any interceptor is wrapped with the AutofetchInterceptor.
+	 */
+	@Override
+	public Configuration setInterceptor(Interceptor i) {
+		if (i instanceof AutofetchInterceptor) {
+			return super.setInterceptor(i);
+		} else {
+			AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
+			return super.setInterceptor(ai.copy(i));
+		}
+	}
+
+	/**
+	 * Ensures that the extent manager is set for any Autofetch listeners.
+	 */
+	@Override
+	public void setListeners(String type, Object[] listeners) {
+		setExtentManager(listeners, extentManager);
+		super.setListeners(type, listeners);
+	}
+
+	public ExtentManager getExtentManager() {
+		return extentManager;
+	}
+
+	public void setExtentManager(ExtentManager em) {
+		this.extentManager = em;
+		// Propagate changes to listeners and interceptor
+		AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
+		ai.setExtentManager(em);
+		setExtentManager(getEventListeners().getInitializeCollectionEventListeners(), em);
+		setExtentManager(getEventListeners().getLoadEventListeners(), em);
+	}
+
+	private void setExtentManager(Object[] listeners, ExtentManager em) {
+		for (Object listener : listeners) {
+			if (listener instanceof AutofetchInitializeCollectionListener) {
+				((AutofetchInitializeCollectionListener) listener).setExtentManager(em);
+			}
+			if (listener instanceof AutofetchLoadListener) {
+				((AutofetchLoadListener) listener).setExtentManager(em);
+			}
+		}
+	}
 }

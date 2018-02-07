@@ -22,8 +22,7 @@ import java.util.Set;
 import org.autofetch.hibernate.CollectionTracker;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.Trackable;
-import org.hibernate.collection.PersistentBag;
-import org.hibernate.engine.SessionImplementor;
+import org.hibernate.engine.spi.SessionImplementor;
 
 /**
  * Based on org.hibernate.collection.PersistentBag.
@@ -36,7 +35,7 @@ import org.hibernate.engine.SessionImplementor;
  *
  */
 @SuppressWarnings("unchecked")
-public class AutofetchBag extends PersistentBag implements Trackable {
+public class AutofetchBag extends org.hibernate.collection.internal.PersistentBag implements Trackable {
     private CollectionTracker collectionTracker =
         new CollectionTracker();
 

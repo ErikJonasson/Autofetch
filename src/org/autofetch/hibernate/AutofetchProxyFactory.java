@@ -27,7 +27,7 @@ import net.sf.cglib.proxy.NoOp;
 
 import org.autofetch.hibernate.TrackableEntity;
 import org.hibernate.HibernateException;
-import org.hibernate.engine.SessionImplementor;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.proxy.HibernateProxy;
@@ -49,7 +49,7 @@ public class AutofetchProxyFactory implements ProxyFactory {
     private Class[] interfaces;
     private Method getIdentifierMethod;
     private Method setIdentifierMethod;
-    private AbstractComponentType componentIdType;
+    private CompositeType componentIdType;
     private Class factory;
     private Set<org.autofetch.hibernate.Property> persistentProperties;
 

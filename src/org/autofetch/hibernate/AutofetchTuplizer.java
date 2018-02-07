@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.autofetch.hibernate.Trackable;
 import org.hibernate.HibernateException;
-import org.hibernate.engine.SessionImplementor;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.property.Getter;
 import org.hibernate.property.Setter;

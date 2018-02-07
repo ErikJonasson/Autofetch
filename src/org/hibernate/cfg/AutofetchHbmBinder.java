@@ -20,7 +20,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Properties;
 import java.util.StringTokenizer;
-
+import org.hibernate.tuple.ValueGeneration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.autofetch.hibernate.AutofetchIdBagType;
@@ -35,11 +35,10 @@ import org.hibernate.EntityMode;
 import org.hibernate.FetchMode;
 import org.hibernate.FlushMode;
 import org.hibernate.MappingException;
-import org.hibernate.engine.ExecuteUpdateResultCheckStyle;
-import org.hibernate.engine.FilterDefinition;
-import org.hibernate.engine.NamedQueryDefinition;
-import org.hibernate.engine.Versioning;
 import org.hibernate.id.PersistentIdentifierGenerator;
+import org.hibernate.internal.util.ReflectHelper;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.internal.util.xml.XmlDocument;
 import org.hibernate.mapping.Any;
 import org.hibernate.mapping.Array;
 import org.hibernate.mapping.AuxiliaryDatabaseObject;
@@ -85,9 +84,6 @@ import org.hibernate.type.DiscriminatorType;
 import org.hibernate.type.ForeignKeyDirection;
 import org.hibernate.type.Type;
 import org.hibernate.type.TypeFactory;
-import org.hibernate.util.JoinedIterator;
-import org.hibernate.util.ReflectHelper;
-import org.hibernate.util.StringHelper;
 
 /**
  * Walks an XML mapping document and produces the Hibernate configuration-time
@@ -121,34 +117,31 @@ public final class AutofetchHbmBinder {
      *            Any inherited meta-tag information.
      * @throws MappingException
      */
-    public static void bindRoot(Document doc, Mappings mappings,
-            java.util.Map inheritedMetas) throws MappingException {
+	public static void bindRoot(
+			XmlDocument metadataXml,
+			Mappings mappings,
+			java.util.Map inheritedMetas,
+			java.util.Set<String> entityNames) throws MappingException {
 
-        java.util.List names = AutofetchHbmBinder.getExtendsNeeded(doc,
-                mappings);
-        if (!names.isEmpty()) {
-            // classes mentioned in extends not available - so put it in queue
-            Element hmNode = doc.getRootElement();
-            Attribute packNode = hmNode.attribute("package");
-            String packageName = null;
-            if (packNode != null) {
-                packageName = packNode.getValue();
-            }
-            Iterator itr = names.iterator();
-            while (itr.hasNext()) {
-                String extendsName = (String) itr.next();
-                mappings.addToExtendsQueue(new ExtendsQueueEntry(extendsName,
-                        packageName, doc));
-            }
-            return;
-        }
+		final Document doc = metadataXml.getDocumentTree();
+		final Element hibernateMappingElement = doc.getRootElement();
 
-        Element hmNode = doc.getRootElement();
-        // get meta's from <hibernate-mapping>
-        inheritedMetas = getMetas(hmNode, inheritedMetas, true);
-        extractRootAttributes(hmNode, mappings);
+		java.util.List<String> names = AutofetchHbmBinder.getExtendsNeeded( metadataXml, mappings );
+		if ( !names.isEmpty() ) {
+			// classes mentioned in extends not available - so put it in queue
+			Attribute packageAttribute = hibernateMappingElement.attribute( "package" );
+			String packageName = packageAttribute == null ? null : packageAttribute.getValue();
+			for ( String name : names ) {
+				mappings.addToExtendsQueue( new ExtendsQueueEntry( name, packageName, metadataXml, entityNames ) );
+			}
+			return;
+		}
 
-        Iterator rootChildren = hmNode.elementIterator();
+		// get meta's from <hibernate-mapping>
+		inheritedMetas = getMetas( hibernateMappingElement, inheritedMetas, true );
+		extractRootAttributes( hibernateMappingElement, mappings );
+
+		Iterator rootChildren = hibernateMappingElement.elementIterator();
         while (rootChildren.hasNext()) {
             final Element element = (Element) rootChildren.next();
             final String elementName = element.getName();
@@ -385,7 +378,7 @@ public final class AutofetchHbmBinder {
             throws MappingException {
         String propertyName = idNode.attributeValue("name");
 
-        SimpleValue id = new SimpleValue(entity.getTable());
+        SimpleValue id = new SimpleValue((Mappings) entity.getTable());
         entity.setIdentifier(id);
 
         // if ( propertyName == null || entity.getPojoRepresentation() == null )
@@ -476,7 +469,7 @@ public final class AutofetchHbmBinder {
             java.util.Map inheritedMetas) {
 
         String propertyName = subnode.attributeValue("name");
-        SimpleValue val = new SimpleValue(table);
+        SimpleValue val = new SimpleValue((Mappings) table);
         bindSimpleValue(subnode, val, false, propertyName, mappings);
         if (!val.isTypeSpecified()) {
             // this is either a <version/> tag with no type attribute,
@@ -498,7 +491,8 @@ public final class AutofetchHbmBinder {
         // "always"
         // generated; aka, "insert" is invalid; this is dis-allowed by the DTD,
         // but just to make sure...
-        if (prop.getGeneration() == PropertyGeneration.INSERT) {
+        ValueGeneration
+        if (prop.getGeneration() == ValueGeneration) {
             throw new MappingException(
                     "'generated' attribute cannot be 'insert' for versioning property");
         }
@@ -509,7 +503,7 @@ public final class AutofetchHbmBinder {
 
     private static void bindDiscriminatorProperty(Table table,
             RootClass entity, Element subnode, Mappings mappings) {
-        SimpleValue discrim = new SimpleValue(table);
+        SimpleValue discrim = new SimpleValue((Mappings) table);
         entity.setDiscriminator(discrim);
         bindSimpleValue(subnode, discrim, false,
                 RootClass.DEFAULT_DISCRIMINATOR_COLUMN_NAME, mappings);

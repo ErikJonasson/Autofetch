@@ -14,7 +14,7 @@
 package org.autofetch.hibernate;
 
 import java.io.Serializable;
-
+import org.hibernate.collection.spi.PersistentCollection;
 import org.dom4j.Element;
 import org.hibernate.EntityMode;
 import org.hibernate.collection.PersistentCollection;
@@ -23,6 +23,8 @@ import org.hibernate.engine.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.type.ListType;
 import org.hibernate.type.TypeFactory.TypeScope;
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.collection.internal.PersistentElementHolder;
 
 /**
  * This class is based on org.hibernate.type.ListType.

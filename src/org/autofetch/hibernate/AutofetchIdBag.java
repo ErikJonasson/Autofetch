@@ -22,8 +22,8 @@ import java.util.Set;
 import org.autofetch.hibernate.CollectionTracker;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.Trackable;
-import org.hibernate.collection.PersistentIdentifierBag;
-import org.hibernate.engine.SessionImplementor;
+import org.hibernate.collection.internal.PersistentIdentifierBag;
+import org.hibernate.engine.spi.SessionImplementor;
 
 /**
  * Based on org.hibernate.collection.PersistentIdentifierBag.

@@ -25,10 +25,10 @@ import org.autofetch.hibernate.Property;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.Trackable;
 import org.autofetch.hibernate.TrackableEntity;
-import org.hibernate.engine.SessionImplementor;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.proxy.pojo.BasicLazyInitializer;
-import org.hibernate.type.AbstractComponentType;
-import org.hibernate.util.ReflectHelper;
+import org.hibernate.type.CompositeType;
+import org.hibernate.internal.util.ReflectHelper;
 
 /**
  * This class is based on org.hibernate.proxy.pjo.cglib.CGLIBLazyInitializer.
@@ -42,12 +42,15 @@ public class AutofetchProxyCallback extends BasicLazyInitializer implements
     
     private boolean entityTrackersSet;
 
+    
+    //Check whether the last paremeter, set to false for now
     public AutofetchProxyCallback(String entityName, Class persistentClass,
             Serializable id, Method getIdentifierMethod,
-            Method setIdentifierMethod, AbstractComponentType componentIdType,
+            Method setIdentifierMethod, CompositeType componentIdType,
             SessionImplementor session, Set<Property> persistentProperties) {
         super(entityName, persistentClass, id, getIdentifierMethod,
-                setIdentifierMethod, componentIdType, session);
+                setIdentifierMethod, componentIdType, session, false);
+        
         AutofetchInterceptor ai =
             (AutofetchInterceptor) session.getInterceptor();
         this.entityTracker = new EntityTracker(

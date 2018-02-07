@@ -20,9 +20,8 @@ import java.util.Set;
 import org.autofetch.hibernate.CollectionTracker;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.Trackable;
-import org.hibernate.collection.PersistentSet;
-import org.hibernate.engine.SessionImplementor;
-
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.collection.internal.PersistentSet;
 /**
  * Based on org.hibernate.collection.PersistentSet
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>

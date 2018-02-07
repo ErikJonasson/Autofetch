@@ -25,17 +25,15 @@ import org.autofetch.hibernate.Path;
 import org.autofetch.hibernate.Trackable;
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
-import org.hibernate.cache.CacheKey;
-import org.hibernate.cache.entry.CollectionCacheEntry;
-import org.hibernate.collection.PersistentCollection;
-import org.hibernate.engine.CollectionEntry;
-import org.hibernate.engine.PersistenceContext;
-import org.hibernate.engine.SessionFactoryImplementor;
-import org.hibernate.engine.SessionImplementor;
-import org.hibernate.event.InitializeCollectionEvent;
+import org.hibernate.cache.spi.CacheKey;
+import org.hibernate.cache.spi.entry.CollectionCacheEntry;
 import org.hibernate.event.def.DefaultInitializeCollectionEventListener;
 import org.hibernate.persister.collection.CollectionPersister;
-
+import org.hibernate.collection.spi.PersistentCollection;
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.CollectionEntry;
+import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 /**
  * This class is based in part on
  * org.hibernate.event.def.DefaultInitializeCollectionEventListener.
@@ -162,7 +160,7 @@ public class AutofetchInitializeCollectionListener extends
             final SessionFactoryImplementor factory = source.getFactory();
 
             final CacheKey ck = new CacheKey(id, persister.getKeyType(),
-                    persister.getRole(), source.getEntityMode(), source
+                    persister.getRole(), source.getEntityPersister(entityName, object).getEntityMode(), source
                             .getFactory());
             Object ce = persister.getCacheAccessStrategy().get(ck, source.getTimestamp());
 

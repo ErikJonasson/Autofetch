@@ -29,11 +29,11 @@ import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.Query;
 import org.hibernate.Session;
-import org.hibernate.engine.EntityKey;
-import org.hibernate.event.LoadEvent;
-import org.hibernate.event.def.DefaultLoadEventListener;
+import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
+import org.hibernate.event.internal.DefaultLoadEventListener;
+import org.hibernate.event.spi.LoadEvent;
 
 /**
  * This class extends the hibernate default event listener to add prefetch

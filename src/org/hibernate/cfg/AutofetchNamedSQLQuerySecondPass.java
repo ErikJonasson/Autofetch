@@ -18,8 +18,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import org.hibernate.MappingException;
-import org.hibernate.util.StringHelper;
-import org.hibernate.engine.NamedSQLQueryDefinition;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.engine.spi.NamedSQLQueryDefinition;
 import org.hibernate.engine.ResultSetMappingDefinition;
 import org.dom4j.Attribute;
 import org.dom4j.Element;

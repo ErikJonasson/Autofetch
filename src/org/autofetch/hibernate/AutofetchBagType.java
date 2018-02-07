@@ -17,9 +17,9 @@ import java.io.Serializable;
 
 import org.dom4j.Element;
 import org.hibernate.EntityMode;
-import org.hibernate.collection.PersistentCollection;
-import org.hibernate.collection.PersistentElementHolder;
-import org.hibernate.engine.SessionImplementor;
+import org.hibernate.collection.internal.PersistentElementHolder;
+import org.hibernate.collection.spi.PersistentCollection;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.type.BagType;
 import org.hibernate.type.TypeFactory.TypeScope;
@@ -39,14 +39,15 @@ public class AutofetchBagType extends BagType {
     @Override
     public PersistentCollection instantiate(SessionImplementor session,
             CollectionPersister persister, Serializable key) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
+        if (session.getEntityPersister(getName(),null).getEntityMode() == EntityMode.DOM4J) {
             return new PersistentElementHolder(session, persister, key);
         } else {
             return new AutofetchBag(session);
         }
     }
-
-    @Override
+    //we need to migrate from session.getEntity() to session.getEntityPersister(entity, object).getEntityMode() somehow
+    @SuppressWarnings("rawtypes")
+	@Override
     public PersistentCollection wrap(SessionImplementor session,
             Object collection) {
         if (session.getEntityMode() == EntityMode.DOM4J) {
