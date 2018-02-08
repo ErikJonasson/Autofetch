@@ -17,10 +17,10 @@ import java.io.Serializable;
 
 import org.dom4j.Element;
 import org.hibernate.EntityMode;
-import org.hibernate.collection.PersistentCollection;
+import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.collection.internal.PersistentElementHolder;
 import org.hibernate.collection.internal.PersistentBag;
-import org.hibernate.engine.spi.SessionImplementor
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.type.IdentifierBagType;
 import org.hibernate.type.TypeFactory.TypeScope;
@@ -32,28 +32,27 @@ import org.hibernate.type.TypeFactory.TypeScope;
  */
 public class AutofetchIdBagType extends IdentifierBagType {
 
-    public AutofetchIdBagType(TypeScope typeScope, String role, String propertyRef,
-            boolean isEmbeddedInXML) {
-        super(typeScope, role, propertyRef, isEmbeddedInXML);
+    public AutofetchIdBagType(TypeScope typeScope, String role, String propertyRef) {
+        super(typeScope, role, propertyRef);
     }
 
     @Override
-    public PersistentBag instantiate(SessionImplementor session,
+    public PersistentCollection instantiate(SessionImplementor session,
             CollectionPersister persister, Serializable key) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, persister, key);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, persister, key);
+//        } else {
             return new AutofetchIdBag(session);
-        }
+//        }
     }
 
     @Override
     public PersistentCollection wrap(SessionImplementor session,
             Object collection) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, (Element) collection);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, (Element) collection);
+//        } else {
             return new AutofetchIdBag(session, (java.util.Collection) collection);
-        }
+//        }
     }
 }

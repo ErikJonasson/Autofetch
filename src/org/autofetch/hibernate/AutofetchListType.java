@@ -15,16 +15,10 @@ package org.autofetch.hibernate;
 
 import java.io.Serializable;
 import org.hibernate.collection.spi.PersistentCollection;
-import org.dom4j.Element;
-import org.hibernate.EntityMode;
-import org.hibernate.collection.PersistentCollection;
-import org.hibernate.collection.PersistentElementHolder;
-import org.hibernate.engine.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.type.ListType;
 import org.hibernate.type.TypeFactory.TypeScope;
 import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.collection.internal.PersistentElementHolder;
 
 /**
  * This class is based on org.hibernate.type.ListType.
@@ -35,26 +29,26 @@ public class AutofetchListType extends ListType {
 
     public AutofetchListType(TypeScope typeScope, String role, String propertyRef,
             boolean isEmbeddedInXML) {
-        super(typeScope, role, propertyRef, isEmbeddedInXML);
+        super(typeScope, role, propertyRef);
     }
 
     @Override
     public PersistentCollection instantiate(SessionImplementor session,
             CollectionPersister persister, Serializable key) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, persister, key);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, persister, key);
+//        } else {
             return new AutofetchList(session);
-        }
+//        }
     }
 
     @Override
     public PersistentCollection wrap(SessionImplementor session,
             Object collection) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, (Element) collection);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, (Element) collection);
+//        } else {
             return new AutofetchList(session, (java.util.List) collection);
-        }
+//        }
     }
 }

@@ -31,29 +31,28 @@ import org.hibernate.type.TypeFactory.TypeScope;
  */
 public class AutofetchBagType extends BagType {
 
-    public AutofetchBagType(TypeScope typeScope, String role, String propertyRef,
-            boolean isEmbeddedInXML) {
-        super(typeScope, role, propertyRef, isEmbeddedInXML);
+    public AutofetchBagType(TypeScope typeScope, String role, String propertyRef) {
+        super(typeScope, role, propertyRef);
     }
 
     @Override
     public PersistentCollection instantiate(SessionImplementor session,
             CollectionPersister persister, Serializable key) {
-        if (session.getEntityPersister(getName(),null).getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, persister, key);
-        } else {
+//        if (session.getEntityPersister(getName(),null).getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, persister, key);
+//        } else {
             return new AutofetchBag(session);
-        }
+//        }
     }
     //we need to migrate from session.getEntity() to session.getEntityPersister(entity, object).getEntityMode() somehow
     @SuppressWarnings("rawtypes")
 	@Override
     public PersistentCollection wrap(SessionImplementor session,
             Object collection) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, (Element) collection);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, (Element) collection);
+//        } else {
             return new AutofetchBag(session, (java.util.Collection) collection);
-        }
+//        }
     }
 }

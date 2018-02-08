@@ -29,10 +29,16 @@ import org.hibernate.cfg.ExtendsQueueEntry;
 import org.hibernate.cfg.HbmBinder;
 import org.hibernate.cfg.MetadataSourceType;
 import org.hibernate.cfg.SettingsFactory;
-import org.hibernate.event.InitializeCollectionEventListener;
-import org.hibernate.event.LoadEventListener;
-import org.hibernate.util.CollectionHelper;
-import org.hibernate.util.xml.XmlDocument;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.event.service.spi.EventListenerRegistry;
+import org.hibernate.event.spi.EventType;
+import org.hibernate.event.spi.InitializeCollectionEventListener;
+import org.hibernate.event.spi.LoadEventListener;
+import org.hibernate.integrator.spi.Integrator;
+import org.hibernate.internal.util.collections.CollectionHelper;
+import org.hibernate.internal.util.xml.XmlDocument;
+import org.hibernate.metamodel.source.MetadataImplementor;
+import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
 /**
  * Based on org.hibernate.cfg.Configuration.
@@ -43,7 +49,7 @@ import org.hibernate.util.xml.XmlDocument;
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  * 
  */
-public class AutofetchConfiguration extends Configuration {
+public class AutofetchConfiguration extends Configuration implements Integrator {
 
 	private ExtentManager extentManager;
 
@@ -57,28 +63,25 @@ public class AutofetchConfiguration extends Configuration {
 		initialize();
 	}
 
-//	 @Override
-//	 protected void add(org.dom4j.Document doc) throws MappingException {
-//	 HbmBinder.bindRoot(doc, createMappings(),
-//	 CollectionHelper.EMPTY_MAP);
-//	 }
-	
+	@Override
+	public void add(XmlDocument metadataXml) throws MappingException {
+		HbmBinder.bindRoot(metadataXml, createMappings(), CollectionHelper.EMPTY_MAP);
+	}
 
-	
-//	public void processHbmXml(XmlDocument metadataXml, Set<String> entityNames) {
-//		try {
-//			HbmBinder.bindRoot(metadataXml, createMappings(), CollectionHelper.EMPTY_MAP, entityNames);
-//		} catch (MappingException me) {
-//			throw new InvalidMappingException(metadataXml.getOrigin().getType(), metadataXml.getOrigin().getName(), me);
-//		}
-//
-//		for (String entityName : entityNames) {
-//			if (annotatedClassesByEntityNameMap.containsKey(entityName)) {
-//				annotatedClasses.remove(annotatedClassesByEntityNameMap.get(entityName));
-//				annotatedClassesByEntityNameMap.remove(entityName);
-//			}
-//		}
-//	}
+	public void processHbmXml(XmlDocument metadataXml, Set<String> entityNames) {
+		try {
+			HbmBinder.bindRoot(metadataXml, createMappings(), CollectionHelper.EMPTY_MAP, entityNames);
+		} catch (MappingException me) {
+			throw new InvalidMappingException(metadataXml.getOrigin().getType(), metadataXml.getOrigin().getName(), me);
+		}
+
+		for (String entityName : entityNames) {
+			if (annotatedClassesByEntityNameMap.containsKey(entityName)) {
+				annotatedClasses.remove(annotatedClassesByEntityNameMap.get(entityName));
+				annotatedClassesByEntityNameMap.remove(entityName);
+			}
+		}
+	}
 
 	// @Override
 	// protected org.dom4j.Document findPossibleExtends() {
@@ -122,6 +125,7 @@ public class AutofetchConfiguration extends Configuration {
 
 	private void initialize() {
 		extentManager = new ExtentManager();
+		
 		getEventListeners().setLoadEventListeners(new LoadEventListener[] { new AutofetchLoadListener(extentManager) });
 		getEventListeners().setInitializeCollectionEventListeners(
 				new InitializeCollectionEventListener[] { new AutofetchInitializeCollectionListener(extentManager) });
@@ -147,6 +151,7 @@ public class AutofetchConfiguration extends Configuration {
 	@Override
 	public void setListeners(String type, Object[] listeners) {
 		setExtentManager(listeners, extentManager);
+
 		super.setListeners(type, listeners);
 	}
 
@@ -172,5 +177,25 @@ public class AutofetchConfiguration extends Configuration {
 				((AutofetchLoadListener) listener).setExtentManager(em);
 			}
 		}
+	}
+
+	public void integrate(Configuration configuration, SessionFactoryImplementor sessionFactory,
+			SessionFactoryServiceRegistry serviceRegistry) {
+		
+		final EventListenerRegistry eventListenerRegistry = serviceRegistry.getService(EventListenerRegistry.class);
+		sessionFactory.getCurrentSession().addEventListeners(listeners);
+		//eventListenerRegistry.setListeners(type, listeners);
+		eventListenerRegistry.prependListeners(EventType.AUTO_FLUSH, sessionFactory.addObserver(getSessionFactoryObserver()));
+	}
+
+	public void integrate(MetadataImplementor metadata, SessionFactoryImplementor sessionFactory,
+			SessionFactoryServiceRegistry serviceRegistry) {
+		// TODO Auto-generated method stub
+
+	}
+
+	public void disintegrate(SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
+		// TODO Auto-generated method stub
+
 	}
 }

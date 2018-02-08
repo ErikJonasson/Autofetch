@@ -27,10 +27,13 @@ import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.cache.spi.CacheKey;
 import org.hibernate.cache.spi.entry.CollectionCacheEntry;
-import org.hibernate.event.def.DefaultInitializeCollectionEventListener;
+import org.hibernate.event.internal.DefaultInitializeCollectionEventListener;
+import org.hibernate.event.spi.InitializeCollectionEvent;
+import org.hibernate.event.spi.InitializeCollectionEventListener;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.internal.CacheHelper;
 import org.hibernate.engine.spi.CollectionEntry;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -43,7 +46,7 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
  *
  */
 public class AutofetchInitializeCollectionListener extends
-        DefaultInitializeCollectionEventListener {
+        DefaultInitializeCollectionEventListener implements InitializeCollectionEventListener {
 
     private static final Log log = LogFactory
             .getLog(AutofetchInitializeCollectionListener.class);
@@ -159,11 +162,8 @@ public class AutofetchInitializeCollectionListener extends
 
             final SessionFactoryImplementor factory = source.getFactory();
 
-            final CacheKey ck = new CacheKey(id, persister.getKeyType(),
-                    persister.getRole(), source.getEntityPersister(entityName, object).getEntityMode(), source
-                            .getFactory());
-            Object ce = persister.getCacheAccessStrategy().get(ck, source.getTimestamp());
-
+            final CacheKey ck = source.generateCacheKey( id, persister.getKeyType(), persister.getRole() );
+            final Object ce = CacheHelper.fromSharedCache( source, ck, persister.getCacheAccessStrategy() );
             if (factory.getStatistics().isStatisticsEnabled()) {
                 if (ce == null) {
                     factory.getStatisticsImplementor().secondLevelCacheMiss(

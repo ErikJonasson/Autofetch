@@ -503,7 +503,7 @@ public final class AutofetchHbmBinder {
 
     private static void bindDiscriminatorProperty(Table table,
             RootClass entity, Element subnode, Mappings mappings) {
-        SimpleValue discrim = new SimpleValue((Mappings) table);
+        SimpleValue discrim = new SimpleValue(table);
         entity.setDiscriminator(discrim);
         bindSimpleValue(subnode, discrim, false,
                 RootClass.DEFAULT_DISCRIMINATOR_COLUMN_NAME, mappings);
