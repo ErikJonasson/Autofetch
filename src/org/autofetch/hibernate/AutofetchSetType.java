@@ -14,9 +14,6 @@
 package org.autofetch.hibernate;
 
 import java.io.Serializable;
-
-import org.dom4j.Element;
-import org.hibernate.EntityMode;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
@@ -33,27 +30,27 @@ public class AutofetchSetType extends SetType {
 
     public AutofetchSetType(TypeScope typeScope, String role, String propertyRef,
             boolean isEmbeddedInXML) {
-        super(typeScope, role, propertyRef, isEmbeddedInXML);
-    }
+        super(typeScope, role, propertyRef);
 
+    }
     @Override
     public PersistentCollection instantiate(SessionImplementor session,
             CollectionPersister persister, Serializable key) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, persister, key);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, persister, key);
+//        } else {
             return new AutofetchSet(session);
-        }
+//        }
     }
 
     @Override
     public PersistentCollection wrap(SessionImplementor session,
             Object collection) {
-        if (session.getEntityMode() == EntityMode.DOM4J) {
-            return new PersistentElementHolder(session, (Element) collection);
-        } else {
+//        if (session.getEntityMode() == EntityMode.DOM4J) {
+//            return new PersistentElementHolder(session, (Element) collection);
+//        } else {
             return new AutofetchSet(session, (java.util.Set) collection);
-        }
+//        }
     }
 
 }
