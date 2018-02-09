@@ -20,9 +20,11 @@ import java.util.Set;
 
 import org.autofetch.hibernate.ExtentManager;
 import org.hibernate.EmptyInterceptor;
+import org.hibernate.HibernateException;
 import org.hibernate.Interceptor;
 import org.hibernate.InvalidMappingException;
 import org.hibernate.MappingException;
+import org.hibernate.SessionFactory;
 import org.hibernate.cfg.AutofetchHbmBinder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.ExtendsQueueEntry;
@@ -40,6 +42,7 @@ import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.internal.util.xml.XmlDocument;
 import org.hibernate.metamodel.source.MetadataImplementor;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
 /**
@@ -52,9 +55,9 @@ import org.hibernate.service.spi.SessionFactoryServiceRegistry;
  * 
  */
 public class AutofetchConfiguration extends Configuration {
-
 	private ExtentManager extentManager;
-	private EventListenerRegistry registry;
+	private EventListenerRegistry eventListenerRegistry;
+	private SessionFactory sessionFactory;
 
 	public AutofetchConfiguration() {
 		super();
@@ -65,7 +68,13 @@ public class AutofetchConfiguration extends Configuration {
 		super(arg0);
 		initialize();
 	}
-
+	
+	@Override
+	public SessionFactory buildSessionFactory(ServiceRegistry serviceRegistry) throws HibernateException {
+		sessionFactory= super.buildSessionFactory(serviceRegistry);
+		eventListenerRegistry = ((SessionFactoryImpl)sessionFactory).getServiceRegistry().getService(AutofetchEventListenerRegistryImpl.class);
+		return sessionFactory;
+	}
 	@Override
 	public void add(XmlDocument metadataXml) throws MappingException {
 		HbmBinder.bindRoot(metadataXml, createMappings(), CollectionHelper.EMPTY_MAP);
@@ -128,12 +137,8 @@ public class AutofetchConfiguration extends Configuration {
 
 	private void initialize() {
 		extentManager = new ExtentManager();
-//		final EventListenerRegistry registry = ((SessionFactoryImpl) getSessionFactoryObserver().)
-//                .getServiceRegistry().getService(EventListenerRegistry.class);
-		registry = new EventListenerRegistryImpl();
-		
-		registry.setListeners(EventType.LOAD, new AutofetchLoadListener());
-		registry.setListeners(EventType.INIT_COLLECTION, new AutofetchInitializeCollectionListener(extentManager));
+		eventListenerRegistry.setListeners(EventType.LOAD, new AutofetchLoadListener());
+		eventListenerRegistry.setListeners(EventType.INIT_COLLECTION, new AutofetchInitializeCollectionListener(extentManager));
 		setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE, extentManager));
 //		getEventListeners().setLoadEventListeners(new LoadEventListener[] { new AutofetchLoadListener(extentManager) });
 //		getEventListeners().setInitializeCollectionEventListeners(
@@ -157,11 +162,11 @@ public class AutofetchConfiguration extends Configuration {
 	/**
 	 * Ensures that the extent manager is set for any Autofetch listeners.
 	 */
-	@Override
-	public void setListeners(String type, Object[] listeners) {
-		setExtentManager(listeners, extentManager);
-		super.setListeners(type, listeners);
-	}
+//	@Override
+//	public void setListeners(String type, Object[] listeners) {
+//		setExtentManager(listeners, extentManager);
+//		super.setListeners(type, listeners);
+//	}
 
 	public ExtentManager getExtentManager() {
 		return extentManager;
@@ -172,9 +177,9 @@ public class AutofetchConfiguration extends Configuration {
 		// Propagate changes to listeners and interceptor
 		AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
 		ai.setExtentManager(em);
-		((AutofetchConfiguration) registry).
-		setExtentManager(registry.getEventListenerGroup(EventType.INIT_COLLECTION).listeners(), em);
-		setExtentManager(registry.getEventListenerGroup(EventType.LOAD).listeners(), em);
+		((AutofetchConfiguration) eventListenerRegistry).
+		setExtentManager(eventListenerRegistry.getEventListenerGroup(EventType.INIT_COLLECTION).listeners(), em);
+		setExtentManager(eventListenerRegistry.getEventListenerGroup(EventType.LOAD).listeners(), em);
 	}
 
 	private <T> void setExtentManager(Iterable<T> listeners, ExtentManager em) {
