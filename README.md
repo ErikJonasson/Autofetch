@@ -2,7 +2,7 @@
 Migration of a legacy hibernate tool that automates prefetching.
 
 ## Current State
-I'm testing the changes done with a minimal Hibernate project. With that test-project, everything compiles successfully with Hibernate 3.5.0Final. I'm currently working on Hibernate 3.6 support in the dev-branch.
+I'm testing the changes done with a minimal Hibernate project. As for now I'm working on a version for Hibernate 4.3.10 because a target project uses that version. After that I will continue with 5.x. 
 
 
 ## Installation
@@ -18,8 +18,7 @@ Optionally: Wrap instances of Criteria:
 Criteria crit = new AutofetchCriteria(sess.createCriteria(Foo.class));
 ```
 ## Goals
-To migrate the tool to the newest version of Hibernate. It would be convenient to have at least one version for Hibernate 4.x aswell. 
-
+To migrate the tool to the newest version of Hibernate.
 ## Documentation
 The original documentation is included in the repo.
 

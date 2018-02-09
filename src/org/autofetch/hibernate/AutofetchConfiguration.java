@@ -30,11 +30,13 @@ import org.hibernate.cfg.HbmBinder;
 import org.hibernate.cfg.MetadataSourceType;
 import org.hibernate.cfg.SettingsFactory;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.event.service.internal.EventListenerRegistryImpl;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
 import org.hibernate.event.spi.InitializeCollectionEventListener;
 import org.hibernate.event.spi.LoadEventListener;
 import org.hibernate.integrator.spi.Integrator;
+import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.internal.util.xml.XmlDocument;
 import org.hibernate.metamodel.source.MetadataImplementor;
@@ -49,9 +51,10 @@ import org.hibernate.service.spi.SessionFactoryServiceRegistry;
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  * 
  */
-public class AutofetchConfiguration extends Configuration implements Integrator {
+public class AutofetchConfiguration extends Configuration {
 
 	private ExtentManager extentManager;
+	private EventListenerRegistry registry;
 
 	public AutofetchConfiguration() {
 		super();
@@ -125,11 +128,17 @@ public class AutofetchConfiguration extends Configuration implements Integrator 
 
 	private void initialize() {
 		extentManager = new ExtentManager();
+//		final EventListenerRegistry registry = ((SessionFactoryImpl) getSessionFactoryObserver().)
+//                .getServiceRegistry().getService(EventListenerRegistry.class);
+		registry = new EventListenerRegistryImpl();
 		
-		getEventListeners().setLoadEventListeners(new LoadEventListener[] { new AutofetchLoadListener(extentManager) });
-		getEventListeners().setInitializeCollectionEventListeners(
-				new InitializeCollectionEventListener[] { new AutofetchInitializeCollectionListener(extentManager) });
+		registry.setListeners(EventType.LOAD, new AutofetchLoadListener());
+		registry.setListeners(EventType.INIT_COLLECTION, new AutofetchInitializeCollectionListener(extentManager));
 		setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE, extentManager));
+//		getEventListeners().setLoadEventListeners(new LoadEventListener[] { new AutofetchLoadListener(extentManager) });
+//		getEventListeners().setInitializeCollectionEventListeners(
+//				new InitializeCollectionEventListener[] { new AutofetchInitializeCollectionListener(extentManager) });
+		
 	}
 
 	/**
@@ -151,7 +160,6 @@ public class AutofetchConfiguration extends Configuration implements Integrator 
 	@Override
 	public void setListeners(String type, Object[] listeners) {
 		setExtentManager(listeners, extentManager);
-
 		super.setListeners(type, listeners);
 	}
 
@@ -164,11 +172,12 @@ public class AutofetchConfiguration extends Configuration implements Integrator 
 		// Propagate changes to listeners and interceptor
 		AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
 		ai.setExtentManager(em);
-		setExtentManager(getEventListeners().getInitializeCollectionEventListeners(), em);
-		setExtentManager(getEventListeners().getLoadEventListeners(), em);
+		((AutofetchConfiguration) registry).
+		setExtentManager(registry.getEventListenerGroup(EventType.INIT_COLLECTION).listeners(), em);
+		setExtentManager(registry.getEventListenerGroup(EventType.LOAD).listeners(), em);
 	}
 
-	private void setExtentManager(Object[] listeners, ExtentManager em) {
+	private <T> void setExtentManager(Iterable<T> listeners, ExtentManager em) {
 		for (Object listener : listeners) {
 			if (listener instanceof AutofetchInitializeCollectionListener) {
 				((AutofetchInitializeCollectionListener) listener).setExtentManager(em);
@@ -179,23 +188,4 @@ public class AutofetchConfiguration extends Configuration implements Integrator 
 		}
 	}
 
-	public void integrate(Configuration configuration, SessionFactoryImplementor sessionFactory,
-			SessionFactoryServiceRegistry serviceRegistry) {
-		
-		final EventListenerRegistry eventListenerRegistry = serviceRegistry.getService(EventListenerRegistry.class);
-		sessionFactory.getCurrentSession().addEventListeners(listeners);
-		//eventListenerRegistry.setListeners(type, listeners);
-		eventListenerRegistry.prependListeners(EventType.AUTO_FLUSH, sessionFactory.addObserver(getSessionFactoryObserver()));
-	}
-
-	public void integrate(MetadataImplementor metadata, SessionFactoryImplementor sessionFactory,
-			SessionFactoryServiceRegistry serviceRegistry) {
-		// TODO Auto-generated method stub
-
-	}
-
-	public void disintegrate(SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
-		// TODO Auto-generated method stub
-
-	}
 }
