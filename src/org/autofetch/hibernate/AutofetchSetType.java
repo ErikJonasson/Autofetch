@@ -28,8 +28,7 @@ import org.hibernate.type.TypeFactory.TypeScope;
  */
 public class AutofetchSetType extends SetType {
 
-    public AutofetchSetType(TypeScope typeScope, String role, String propertyRef,
-            boolean isEmbeddedInXML) {
+    public AutofetchSetType(TypeScope typeScope, String role, String propertyRef) {
         super(typeScope, role, propertyRef);
 
     }

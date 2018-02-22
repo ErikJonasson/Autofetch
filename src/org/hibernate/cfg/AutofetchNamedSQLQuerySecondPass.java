@@ -73,7 +73,7 @@ public class AutofetchNamedSQLQuerySecondPass extends AutofetchResultSetMappingB
 		Attribute ref = queryElem.attribute( "resultset-ref" );
 		String resultSetRef = ref == null ? null : ref.getValue();
 		if ( StringHelper.isNotEmpty( resultSetRef ) ) {
-			namedQuery = new NamedSQLQueryDefinition(
+			namedQuery = new NamedSQLQueryDefinition(queryName,
 					queryElem.getText(),
 					resultSetRef,
 					synchronizedTables,
@@ -92,7 +92,7 @@ public class AutofetchNamedSQLQuerySecondPass extends AutofetchResultSetMappingB
 		}
 		else {
 			ResultSetMappingDefinition definition = buildResultSetMappingDefinition( queryElem, path, mappings );
-			namedQuery = new NamedSQLQueryDefinition(
+			namedQuery = new NamedSQLQueryDefinition(queryName,
 					queryElem.getText(),
 					definition.getQueryReturns(),
 					synchronizedTables,

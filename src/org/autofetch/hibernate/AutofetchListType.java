@@ -27,8 +27,7 @@ import org.hibernate.engine.spi.SessionImplementor;
  */
 public class AutofetchListType extends ListType {
 
-    public AutofetchListType(TypeScope typeScope, String role, String propertyRef,
-            boolean isEmbeddedInXML) {
+    public AutofetchListType(TypeScope typeScope, String role, String propertyRef) {
         super(typeScope, role, propertyRef);
     }
 
