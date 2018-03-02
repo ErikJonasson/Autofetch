@@ -38,14 +38,20 @@ import org.autofetch.hibernate.ExtentManager;
 import org.dom4j.Attribute;
 import org.dom4j.Document;
 import org.dom4j.Element;
+import org.hibernate.AnnotationException;
 import org.hibernate.EmptyInterceptor;
 import org.hibernate.HibernateException;
 import org.hibernate.Interceptor;
 import org.hibernate.InvalidMappingException;
 import org.hibernate.MappingException;
 import org.hibernate.SessionFactory;
+import org.hibernate.annotations.common.reflection.MetadataProvider;
+import org.hibernate.annotations.common.reflection.MetadataProviderInjector;
 import org.hibernate.annotations.common.reflection.ReflectionManager;
 import org.hibernate.annotations.common.reflection.XClass;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.boot.registry.internal.StandardServiceRegistryImpl;
 import org.hibernate.cfg.AnnotationBinder;
 import org.hibernate.cfg.AutofetchHbmBinder;
 import org.hibernate.cfg.Configuration;
@@ -66,8 +72,10 @@ import org.hibernate.cfg.SecondaryTableSecondPass;
 import org.hibernate.cfg.SetSimpleValueTypeSecondPass;
 import org.hibernate.cfg.SettingsFactory;
 import org.hibernate.cfg.UniqueConstraintHolder;
+import org.hibernate.cfg.annotations.reflection.JPAMetadataProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.service.internal.EventListenerRegistryImpl;
+import org.hibernate.event.service.internal.EventListenerServiceInitiator;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
 import org.hibernate.event.spi.InitializeCollectionEventListener;
@@ -88,7 +96,11 @@ import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.mapping.Table;
 import org.hibernate.metamodel.source.MetadataImplementor;
+import org.hibernate.service.Service;
 import org.hibernate.service.ServiceRegistry;
+import org.hibernate.service.internal.SessionFactoryServiceRegistryImpl;
+import org.hibernate.service.spi.ServiceBinding;
+import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 import org.jboss.logging.Logger;
 
@@ -123,9 +135,21 @@ public class AutofetchConfiguration extends Configuration {
 
 	}
 
+	public SessionFactory buildSessionFactory(ServiceRegistry serviceRegistry, ExtentManager extentManager)
+			throws HibernateException {
+		this.extentManager = extentManager;
+		setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE, extentManager));
+		sessionFactory = super.buildSessionFactory(serviceRegistry);
+		manager = getReflectionManager();
+		
+		initialize();
+		return sessionFactory;
+	}
+
 	@Override
 	public SessionFactory buildSessionFactory(ServiceRegistry serviceRegistry) throws HibernateException {
 		sessionFactory = super.buildSessionFactory(serviceRegistry);
+		manager = getReflectionManager();
 		initialize();
 		return sessionFactory;
 	}
@@ -137,26 +161,39 @@ public class AutofetchConfiguration extends Configuration {
 	}
 
 	private void initialize() {
-		manager = getReflectionManager();
-		extentManager = new ExtentManager();
+		eventListenerRegistry = ((SessionFactoryImpl) sessionFactory).getServiceRegistry()
+				.getService(AutofetchEventListenerRegistryImpl.class);
 		eventListenerRegistry = ((SessionFactoryImpl) sessionFactory).getServiceRegistry()
 				.getService(AutofetchEventListenerRegistryImpl.class);
 		eventListenerRegistry.setListeners(EventType.LOAD,
 				new LoadEventListener[] { new AutofetchLoadListener(extentManager) });
 		eventListenerRegistry.setListeners(EventType.INIT_COLLECTION,
 				new AutofetchInitializeCollectionListener(extentManager));
-		setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE, extentManager));
-		// getEventListeners().setLoadEventListeners(new LoadEventListener[] { new
-		// AutofetchLoadListener(extentManager) });
-		// getEventListeners().setInitializeCollectionEventListeners(
-		// new InitializeCollectionEventListener[] { new
-		// AutofetchInitializeCollectionListener(extentManager) });
+		
 	}
 
-	// @Override
-	// protected void add(XmlDocument metadataXml) throws MappingException {
-	// HbmBinder.bindRoot(metadataXml, createMappings(), Collections.EMPTY_MAP);
-	// }
+	private static boolean isOrmXml(XmlDocument xmlDocument) {
+		return "entity-mappings".equals(xmlDocument.getDocumentTree().getRootElement().getName());
+	}
+
+	@Override
+	public void add(XmlDocument metadataXml) {
+		if (inSecondPass || !isOrmXml(metadataXml)) {
+			metadataSourceQueue.add(metadataXml);
+		} else {
+			final MetadataProvider metadataProvider = ((MetadataProviderInjector) manager).getMetadataProvider();
+			JPAMetadataProvider jpaMetadataProvider = (JPAMetadataProvider) metadataProvider;
+			List<String> classNames = jpaMetadataProvider.getXMLContext().addDocument(metadataXml.getDocumentTree());
+			for (String className : classNames) {
+				try {
+					metadataSourceQueue.add(manager.classForName(className, this.getClass()));
+				} catch (ClassNotFoundException e) {
+					throw new AnnotationException("Unable to load class defined in XML: " + className, e);
+				}
+			}
+			jpaMetadataProvider.getXMLContext().applyDiscoveredAttributeConverters(this);
+		}
+	}
 
 	private void originalSecondPassCompile() throws MappingException {
 		LOG.debug("Processing extends queue");
@@ -259,11 +296,6 @@ public class AutofetchConfiguration extends Configuration {
 			try {
 				clazz = Class.forName("org.hibernate.cfg.Configuration");
 				metadataSourceQueue.syncAnnotatedClasses();
-				// Method[] list = clazz.getDeclaredMethods();
-				// ArrayList<String> names = new ArrayList<String>();
-				// for (int i = 0; i < list.length; i++) {
-				// names.add(list[i].getName());
-				// }
 				Method determineMetadataSourcePrecedence = clazz.getDeclaredMethod("determineMetadataSourcePrecedence");
 				determineMetadataSourcePrecedence.setAccessible(true);
 				metadataSourceQueue
@@ -319,45 +351,45 @@ public class AutofetchConfiguration extends Configuration {
 
 				field.setAccessible(true);
 				Object cachesRefl = field.get(this);
-				Class<?> clazz = Class.forName("org.hibernate.cfg.Configuration");
-				Class[] array = clazz.getDeclaredClasses();
-				Class cacheHolder;
-//				for (Class class1 : array) {
-//					if (class1.getName() == "org.hibernate.cfg.Configuration$CacheHolder") {
-//						cacheHolder = class1;
-//						break;
-//					}
-//				}
-//				Constructor ctor = cacheHolder.getDeclaredConstructor();
-//				ctor.setAccessible(true);
+				// Class<?> clazz = Class.forName("org.hibernate.cfg.Configuration");
+				// Class[] array = clazz.getDeclaredClasses();
+				// Class cacheHolder;
+				// for (Class class1 : array) {
+				// if (class1.getName() == "org.hibernate.cfg.Configuration$CacheHolder") {
+				// cacheHolder = class1;
+				// break;
+				// }
+				// }
+				// Constructor ctor = cacheHolder.getDeclaredConstructor();
+				// ctor.setAccessible(true);
 				List<CacheHolder> caches = (List<CacheHolder>) cachesRefl;
-//				Method applyCacheConcurrencyStrategy = clazz.getDeclaredMethod("applyCacheConcurrencyStrategy",
-//						CacheHolder.class);
-//				Method applyCollectionCacheConcurrencyStrategy = clazz
-//						.getDeclaredMethod("applyCollectionCacheConcurrencyStrategy", CacheHolder.class);
-//				applyCacheConcurrencyStrategy.setAccessible(true);
-//				applyCollectionCacheConcurrencyStrategy.setAccessible(true);
-				
-				//Caches is empty, should it be?
-				for ( CacheHolder holder : caches ) {
-					if ( holder.isClass ) {
-						applyCacheConcurrencyStrategy( holder );
-					}
-					else {
-						applyCollectionCacheConcurrencyStrategy( holder );
+				// Method applyCacheConcurrencyStrategy =
+				// clazz.getDeclaredMethod("applyCacheConcurrencyStrategy",
+				// CacheHolder.class);
+				// Method applyCollectionCacheConcurrencyStrategy = clazz
+				// .getDeclaredMethod("applyCollectionCacheConcurrencyStrategy",
+				// CacheHolder.class);
+				// applyCacheConcurrencyStrategy.setAccessible(true);
+				// applyCollectionCacheConcurrencyStrategy.setAccessible(true);
+
+				// Caches is empty, should it be?
+				for (CacheHolder holder : caches) {
+					if (holder.isClass) {
+						applyCacheConcurrencyStrategy(holder);
+					} else {
+						applyCollectionCacheConcurrencyStrategy(holder);
 					}
 				}
-//				
-//				for (CacheHolder holder : caches) {
-//					if (holder.isClass) {
-//						applyCacheConcurrencyStrategy.invoke(this, holder);
-//					} else {
-//						applyCollectionCacheConcurrencyStrategy.invoke(this, holder);
-//					}
-//				}
+				//
+				// for (CacheHolder holder : caches) {
+				// if (holder.isClass) {
+				// applyCacheConcurrencyStrategy.invoke(this, holder);
+				// } else {
+				// applyCollectionCacheConcurrencyStrategy.invoke(this, holder);
+				// }
+				// }
 				caches.clear();
-			} catch (NoSuchFieldException | SecurityException | ClassNotFoundException | IllegalAccessException
-					| IllegalArgumentException e) {
+			} catch (NoSuchFieldException | SecurityException | IllegalAccessException | IllegalArgumentException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -368,9 +400,12 @@ public class AutofetchConfiguration extends Configuration {
 		try {
 			clazz = Class.forName("org.hibernate.cfg.Configuration");
 
-			Method buildUniqueKeyFromColumnNames = clazz.getDeclaredMethod("buildUniqueKeyFromColumnNames");
-			buildUniqueKeyFromColumnNames.setAccessible(true);
-
+			Method buildUniqueKeyFromColumnNames1 = clazz.getDeclaredMethod("buildUniqueKeyFromColumnNames",
+					Table.class, String.class, String[].class);
+			Method buildUniqueKeyFromColumnNames2 = clazz.getDeclaredMethod("buildUniqueKeyFromColumnNames",
+					Table.class, String.class, String[].class, String[].class, boolean.class);
+			buildUniqueKeyFromColumnNames1.setAccessible(true);
+			buildUniqueKeyFromColumnNames2.setAccessible(true);
 			Field field = Configuration.class.getDeclaredField("uniqueConstraintHoldersByTable");
 			field.setAccessible(true);
 			Object uniqueConstraintHoldersByTableRefl = field.get(this);
@@ -381,7 +416,7 @@ public class AutofetchConfiguration extends Configuration {
 				final Table table = tableListEntry.getKey();
 				final List<UniqueConstraintHolder> uniqueConstraints = tableListEntry.getValue();
 				for (UniqueConstraintHolder holder : uniqueConstraints) {
-					buildUniqueKeyFromColumnNames.invoke(this, table, holder.getName(), holder.getColumns());
+					buildUniqueKeyFromColumnNames1.invoke(this, table, holder.getName(), holder.getColumns());
 				}
 			}
 			Field field1 = Configuration.class.getDeclaredField("jpaIndexHoldersByTable");
@@ -392,7 +427,7 @@ public class AutofetchConfiguration extends Configuration {
 			for (Table table : jpaIndexHoldersByTable.keySet()) {
 				final List<JPAIndexHolder> jpaIndexHolders = jpaIndexHoldersByTable.get(table);
 				for (JPAIndexHolder holder : jpaIndexHolders) {
-					buildUniqueKeyFromColumnNames.invoke(this, table, holder.getName(), holder.getColumns(),
+					buildUniqueKeyFromColumnNames2.invoke(this, table, holder.getName(), holder.getColumns(),
 							holder.getOrdering(), holder.isUnique());
 				}
 			}
@@ -719,14 +754,14 @@ public class AutofetchConfiguration extends Configuration {
 		}
 
 	}
-	
+
 	private void applyCollectionCacheConcurrencyStrategy(CacheHolder holder) {
-		Collection collection = getCollectionMapping( holder.role );
-		if ( collection == null ) {
-			throw new MappingException( "Cannot cache an unknown collection: " + holder.role );
+		Collection collection = getCollectionMapping(holder.role);
+		if (collection == null) {
+			throw new MappingException("Cannot cache an unknown collection: " + holder.role);
 		}
-		collection.setCacheConcurrencyStrategy( holder.usage );
-		collection.setCacheRegionName( holder.region );
+		collection.setCacheConcurrencyStrategy(holder.usage);
+		collection.setCacheRegionName(holder.region);
 	}
 
 	private void applyCacheConcurrencyStrategy(CacheHolder holder) {
@@ -740,13 +775,12 @@ public class AutofetchConfiguration extends Configuration {
 	}
 
 	RootClass getRootClassMapping(String clazz) throws MappingException {
-	 try {
-	 return (RootClass) getClassMapping( clazz );
-	 }
-	 catch (ClassCastException cce) {
-	 throw new MappingException( "You may only specify a cache for root <class> mappings. Attempted on " + clazz );
-	 	}
-	 }
+		try {
+			return (RootClass) getClassMapping(clazz);
+		} catch (ClassCastException cce) {
+			throw new MappingException("You may only specify a cache for root <class> mappings. Attempted on " + clazz);
+		}
+	}
 
 	private static class CacheHolder {
 		public CacheHolder(String role, String usage, String region, boolean isClass, boolean cacheLazy) {

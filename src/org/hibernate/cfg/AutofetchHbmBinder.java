@@ -302,7 +302,7 @@ public final class AutofetchHbmBinder {
 
 		Table table = mappings.addTable(schema, catalog,
 				getClassTableName(entity, node, schema, catalog, null, mappings), getSubselect(node),
-				entity.isAbstract() != null && entity.isAbstract().booleanValue());
+				entity.isAbstract() != null && entity.isAbstract());
 		entity.setTable(table);
 		bindComment(table, node);
 
@@ -366,8 +366,8 @@ public final class AutofetchHbmBinder {
 	private static void bindSimpleId(Element idNode, RootClass entity, Mappings mappings, java.util.Map inheritedMetas)
 			throws MappingException {
 		String propertyName = idNode.attributeValue("name");
-
-		SimpleValue id = new SimpleValue((Mappings) entity.getTable());
+		SimpleValue id = new SimpleValue(mappings, entity.getTable());
+		// SimpleValue id = new SimpleValue((Mappings) entity.getTable());
 		entity.setIdentifier(id);
 
 		// if ( propertyName == null || entity.getPojoRepresentation() == null )
@@ -410,6 +410,7 @@ public final class AutofetchHbmBinder {
 			prop.setValue(id);
 			bindProperty(idNode, prop, mappings, inheritedMetas);
 			entity.setIdentifierProperty(prop);
+			entity.setDeclaredIdentifierProperty(prop);
 		}
 
 		// TODO:
@@ -521,7 +522,7 @@ public final class AutofetchHbmBinder {
 			throw new MappingException("Unable to determine entity name");
 		}
 		persistentClass.setEntityName(entityName);
-
+		persistentClass.setJpaEntityName( StringHelper.unqualify( entityName ) );
 		bindPojoRepresentation(node, persistentClass, mappings, inheritedMetas);
 		bindDom4jRepresentation(node, persistentClass, mappings, inheritedMetas);
 		bindMapRepresentation(node, persistentClass, mappings, inheritedMetas);
@@ -977,6 +978,9 @@ public final class AutofetchHbmBinder {
 					String columnName = columnElement.attributeValue("name");
 					String logicalColumnName = getNamingStrategyDelegate(mappings)
 							.determineLogicalColumnName(columnName, propertyPath);
+					columnName = getNamingStrategyDelegate(mappings).toPhysicalColumnName(columnName);
+					columnName = quoteIdentifier(columnName, mappings);
+					column.setName(columnName);
 					if (table != null) {
 						table.addColumn(column); // table=null -> an
 						// association
@@ -998,7 +1002,15 @@ public final class AutofetchHbmBinder {
 					simpleValue.addFormula(formula);
 				}
 			}
-		} else {
+
+			final Attribute uniqueAttribute = node.attribute("unique");
+			if (uniqueAttribute != null && "true".equals(uniqueAttribute.getValue())
+					&& ManyToOne.class.isInstance(simpleValue)) {
+				((ManyToOne) simpleValue).markAsLogicalOneToOne();
+			}
+		}
+
+		else {
 			if (node.elementIterator("column").hasNext()) {
 				throw new MappingException("column attribute may not be used together with <column> subelement");
 			}
@@ -1042,6 +1054,11 @@ public final class AutofetchHbmBinder {
 			bindUniqueKey(node.attribute("unique-key"), table, column, mappings);
 		}
 
+	}
+
+	private static String quoteIdentifier(String identifier, Mappings mappings) {
+		return mappings.getObjectNameNormalizer().isUseQuotedIdentifiersGlobally() ? StringHelper.quote(identifier)
+				: identifier;
 	}
 
 	private static void bindIndex(Attribute indexAttribute, Table table, Column column, Mappings mappings) {
@@ -2555,7 +2572,7 @@ public final class AutofetchHbmBinder {
 
 		public org.hibernate.type.CollectionType getDefaultCollectionType() {
 			return new AutofetchBagType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
-					getReferencedPropertyName()),getRole(), getReferencedPropertyName());
+					getReferencedPropertyName()), getRole(), getReferencedPropertyName());
 		}
 	}
 
