@@ -6,6 +6,7 @@ package org.autofetch.test;
 import java.util.Iterator;
 import org.autofetch.hibernate.AutofetchConfiguration;
 import org.autofetch.hibernate.AutofetchCriteria;
+import org.autofetch.hibernate.AutofetchEventListenerRegistryImpl;
 import org.autofetch.hibernate.ExtentManager;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.TraversalProfile;
@@ -16,8 +17,11 @@ import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.criterion.Restrictions;
+import org.hibernate.event.service.spi.EventListenerRegistry;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.junit.After;
@@ -803,17 +807,29 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
     }
 
-
-
     @Before
     public void setUp() {
-        AutofetchConfiguration cfg = new AutofetchConfiguration();
-        cfg.configure();
-        em = cfg.getExtentManager();
-        sf = cfg.buildSessionFactory();
-        SchemaExport se = new SchemaExport(cfg);
-        se.create(false, true);
+        try {
+        	em = new ExtentManager();
+        	ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().addService(EventListenerRegistry.class, new AutofetchEventListenerRegistryImpl(em)).build();
+        		AutofetchConfiguration cfg = (AutofetchConfiguration) new AutofetchConfiguration();
+        		sf = cfg.buildSessionFactory(serviceRegistry, em);
+        		SchemaExport se = new SchemaExport(cfg);
+        		se.create(false, true);
+        }
+        catch (Throwable ex) {
+            System.err.println("Initial SessionFactory creation failed." + ex);
+            throw new ExceptionInInitializerError(ex);
+        }
     }
+
+//        AutofetchConfiguration cfg = new AutofetchConfiguration();
+//        cfg.configure();
+//        em = cfg.getExtentManager();
+//        sf = cfg.buildSessionFactory();
+//        SchemaExport se = new SchemaExport(cfg);
+//        se.create(false, true);
+//    }
 
     @After
     public void tearDown() {

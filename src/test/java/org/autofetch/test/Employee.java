@@ -9,6 +9,8 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
@@ -19,11 +21,14 @@ import javax.persistence.OneToMany;
 /**
  * @author aibrahim
  */
-@Entity
-public class Employee {
 
+@Entity
+
+public class Employee {
+	
     @Id
     @Column(name = "employee_id")
+    @GeneratedValue(strategy=GenerationType.AUTO)
     private Long m_id;
 
     @Column(name = "name")
