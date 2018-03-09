@@ -6,6 +6,7 @@ import org.hibernate.event.spi.EventType;
 public class AutofetchEventListenerRegistryImpl extends EventListenerRegistryImpl {
 
 	private ExtentManager em;
+
 	public AutofetchEventListenerRegistryImpl(ExtentManager em) {
 		super();
 		this.em = em;

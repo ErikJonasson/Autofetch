@@ -43,7 +43,12 @@ import org.hibernate.event.spi.LoadEvent;
  */
 public class AutofetchLoadListener extends DefaultLoadEventListener {
 
-    private static final Log log = LogFactory
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	private static final Log log = LogFactory
             .getLog(AutofetchLoadListener.class);
 
     private ExtentManager extentManager;
