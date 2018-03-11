@@ -11,9 +11,7 @@ import org.dom4j.Attribute;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.hibernate.AnnotationException;
-import org.hibernate.EmptyInterceptor;
 import org.hibernate.HibernateException;
-import org.hibernate.Interceptor;
 import org.hibernate.InvalidMappingException;
 import org.hibernate.MappingException;
 import org.hibernate.SessionFactory;
@@ -112,7 +110,6 @@ public class AutofetchConfiguration extends Configuration {
     public SessionFactory buildSessionFactory(ServiceRegistry serviceRegistry, ExtentManager extentManager)
             throws HibernateException {
         this.extentManager = extentManager;
-        setInterceptor(new AutofetchInterceptor(EmptyInterceptor.INSTANCE, extentManager));
         sessionFactory = super.buildSessionFactory(serviceRegistry);
         manager = getReflectionManager();
         return sessionFactory;
@@ -415,19 +412,6 @@ public class AutofetchConfiguration extends Configuration {
             }
         }
         return null;
-    }
-
-    /**
-     * Ensures that any interceptor is wrapped with the AutofetchInterceptor.
-     */
-    @Override
-    public Configuration setInterceptor(Interceptor i) {
-        if (i instanceof AutofetchInterceptor) {
-            return super.setInterceptor(i);
-        } else {
-            AutofetchInterceptor ai = (AutofetchInterceptor) getInterceptor();
-            return super.setInterceptor(ai.copy(i));
-        }
     }
 
     public ExtentManager getExtentManager() {
