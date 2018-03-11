@@ -1,17 +1,16 @@
 /**
  * Copyright 2008 Ali Ibrahim
- * 
+ * <p>
  * This file is part of Autofetch.
  * Autofetch is free software: you can redistribute it and/or modify
- * it under the terms of the Lesser GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version. Autofetch is distributed in the 
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
- * PURPOSE.  See the Lesser GNU General Public License for more details. You 
- * should have received a copy of the Lesser GNU General Public License along 
+ * it under the terms of the Lesser GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. Autofetch is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the Lesser GNU General Public License for more details. You
+ * should have received a copy of the Lesser GNU General Public License along
  * with Autofetch.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 package org.autofetch.hibernate;
 
@@ -22,23 +21,23 @@ import java.util.Set;
 
 public class CollectionTracker implements Serializable {
 
-    private Set<Statistics> trackers = new HashSet<Statistics>();
+    private final Set<Statistics> trackers = new HashSet<Statistics>();
 
     private boolean accessed = false;
 
     private boolean tracking = true;
-	
-	
-	/* 
-	If this gets called when tracking is activated, set accessed and increment accessed in each of the trackers. For each trackable entity, call extendProfile
-	Used in AutofetchSet, AutofetchBag, AutofetchIdBag, AutofetchList
-	*/
+
+    /*
+    If this gets called when tracking is activated, set accessed and increment accessed in each of the trackers. For each trackable entity, call extendProfile
+    Used in AutofetchSet, AutofetchBag, AutofetchIdBag, AutofetchList
+    */
     public void trackAccess(Collection collection) {
         if (!accessed && tracking) {
             accessed = true;
             for (Statistics stats : trackers) {
                 stats.loadedAssociation();
             }
+
             for (Object elem : collection) {
                 if (elem instanceof TrackableEntity) {
                     TrackableEntity entity = (TrackableEntity) elem;

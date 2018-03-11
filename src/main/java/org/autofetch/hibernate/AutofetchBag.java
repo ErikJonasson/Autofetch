@@ -1,17 +1,18 @@
 /**
  * This file is part of Autofetch.
  * Autofetch is free software: you can redistribute it and/or modify
- * it under the terms of the Lesser GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version. Autofetch is distributed in the 
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
- * PURPOSE.  See the Lesser GNU General Public License for more details. You 
- * should have received a copy of the Lesser GNU General Public License along 
+ * it under the terms of the Lesser GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. Autofetch is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the Lesser GNU General Public License for more details. You
+ * should have received a copy of the Lesser GNU General Public License along
  * with Autofetch.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 package org.autofetch.hibernate;
+
+import org.hibernate.engine.spi.SessionImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -19,20 +20,14 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-import org.autofetch.hibernate.CollectionTracker;
-import org.autofetch.hibernate.Statistics;
-import org.autofetch.hibernate.Trackable;
-import org.hibernate.engine.spi.SessionImplementor;
-
 /**
  * Based on org.hibernate.collection.PersistentBag.
  * Usually delegates to super class except when operation
  * might add an element. In that case, it re-implements
  * the method so that it can record an access before the
  * element is added.
- * 
- * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  *
+ * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 @SuppressWarnings("unchecked")
 public class AutofetchBag extends org.hibernate.collection.internal.PersistentBag implements Trackable {
@@ -51,30 +46,36 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
         super(si);
     }
 
+    @Override
     public void addTracker(Statistics tracker) {
         collectionTracker.addTracker(tracker);
     }
 
+    @Override
     public void addTrackers(Set<Statistics> trackers) {
         collectionTracker.addTrackers(trackers);
     }
 
+    @Override
     public boolean disableTracking() {
         boolean oldValue = collectionTracker.isTracking();
         collectionTracker.setTracking(false);
         return oldValue;
     }
 
+    @Override
     public boolean enableTracking() {
         boolean oldValue = collectionTracker.isTracking();
         collectionTracker.setTracking(true);
         return oldValue;
     }
 
+    @Override
     public void removeTracker(Statistics stats) {
         collectionTracker.removeTracker(stats);
     }
 
+    @Override
     public boolean isAccessed() {
         return collectionTracker.isAccessed();
     }
@@ -84,7 +85,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
             collectionTracker.trackAccess(bag);
         }
     }
-    
+
     /**
      * @see java.util.Set#size()
      */
@@ -200,10 +201,11 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
      */
     @Override
     public boolean addAll(Collection values) {
-        if ( values.size()==0 ) { return false;
-}
+        if (values.size() == 0) {
+            return false;
+        }
 
-        if ( !isOperationQueueEnabled() ) {
+        if (!isOperationQueueEnabled()) {
             write();
             accessed();
             return bag.addAll(values);
@@ -219,7 +221,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
             accessed();
         }
     }
-    
+
     /**
      * @see java.util.Set#retainAll(Collection)
      */
@@ -243,7 +245,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
         }
         return val;
     }
-    
+
     /**
      * @see java.util.List#add(int, Object)
      */
@@ -259,7 +261,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
      */
     @Override
     public boolean addAll(int i, Collection c) {
-        if ( c.size()>0 ) {
+        if (c.size() > 0) {
             write();
             accessed();
             return bag.addAll(i, c);
@@ -361,7 +363,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
         }
         return val;
     }
-    
+
     @Override
     public String toString() {
         //if (needLoading) return "asleep";

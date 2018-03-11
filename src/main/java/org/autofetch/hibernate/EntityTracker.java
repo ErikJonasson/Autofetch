@@ -1,17 +1,16 @@
 /**
  * Copyright 2008 Ali Ibrahim
- * 
+ * <p>
  * This file is part of Autofetch.
  * Autofetch is free software: you can redistribute it and/or modify
- * it under the terms of the Lesser GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version. Autofetch is distributed in the 
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
- * PURPOSE.  See the Lesser GNU General Public License for more details. You 
- * should have received a copy of the Lesser GNU General Public License along 
+ * it under the terms of the Lesser GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. Autofetch is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the Lesser GNU General Public License for more details. You
+ * should have received a copy of the Lesser GNU General Public License along
  * with Autofetch.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 package org.autofetch.hibernate;
 
@@ -20,18 +19,17 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 
-
-//Used as an attribute in EntityProxyCallback get access to the accessed valies
+//Used as an attribute in EntityProxyMethodHandler get access to the accessed valies
 public class EntityTracker implements Serializable {
 
     private boolean accessed = false;
 
     private boolean tracking = true;
 
-    private Set<Statistics> trackers = new HashSet<Statistics>();
+    private Set<Statistics> trackers = new HashSet<>();
 
     private Set<Property> persistentProperties;
-    
+
     private ExtentManager extentManager;
 
     public EntityTracker(
@@ -40,7 +38,8 @@ public class EntityTracker implements Serializable {
         this.persistentProperties = persistentProperties;
         this.extentManager = extentManager;
     }
-	//Set flag and count how many times the entity has been accessed.  Calls extendProfile which adds it to another TP
+
+    //Set flag and count how many times the entity has been accessed.  Calls extendProfile which adds it to another TP
     public void trackAccess(Object entity) throws Throwable {
         if (tracking && !accessed) {
             this.accessed = true;
@@ -50,11 +49,11 @@ public class EntityTracker implements Serializable {
             }
         }
     }
-    
-	
+
     public void removeTracker(Statistics tracker) {
         trackers.remove(tracker);
     }
+
     // Get the property value, if its trackable call private method extendTracker (which returns subgraph-tracker) and add that tracker to this entity
     public void extendProfile(Statistics tracker, Object entity) {
         for (Property prop : persistentProperties) {
@@ -108,10 +107,8 @@ public class EntityTracker implements Serializable {
      * @param collection
      * @return null if traversal profile could not be extended
      */
-	 
-	 //Get parentnode, if it doesnt have any subprofiles and cant add subprofile, return null. Otherwise return new, extended tracker
-    private Statistics extendTracker(Statistics tracker, String assoc,
-            boolean collection) {
+    //Get parentnode, if it doesnt have any subprofiles and cant add subprofile, return null. Otherwise return new, extended tracker
+    private Statistics extendTracker(Statistics tracker, String assoc, boolean collection) {
         TraversalProfile parentNode = tracker.getProfileNode();
         if (!parentNode.hasSubProfile(assoc)) {
             if (!extentManager.addSubProfile(parentNode, assoc, collection)) {

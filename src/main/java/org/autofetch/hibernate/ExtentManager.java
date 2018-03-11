@@ -1,6 +1,6 @@
 /**
  * Copyright 2008 Ali Ibrahim
- *
+ * <p>
  * This file is part of Autofetch. Autofetch is free software: you can redistribute it and/or modify it under the terms of the Lesser GNU General
  * Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. Autofetch is
  * distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
@@ -9,16 +9,16 @@
  */
 package org.autofetch.hibernate;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * This class manages extents for queries.
@@ -109,7 +109,7 @@ public class ExtentManager implements Serializable {
      */
     public List<Path> getPrefetchPaths(String queryId) {
         TraversalProfile tp = getTraversalProfile(queryId);
-        List<Path> paths = new ArrayList<Path>();
+        List<Path> paths = new ArrayList<>();
         if ((tp == null) || !prefetch) {
             return paths;
         }
@@ -118,18 +118,14 @@ public class ExtentManager implements Serializable {
         return paths;
     }
 
-    private void getPrefetchPaths(TraversalProfile tp,
-        Path prefix,
-        List<Path> paths,
-        double parentProbability,
-        boolean collAssocBanned) {
-        //What is prefix in this case?
+    private void getPrefetchPaths(TraversalProfile tp, Path prefix, List<Path> paths, double parentProbability,
+                                  boolean collAssocBanned) {
+        // What is prefix in this case?
         if (prefix.size() > maxPrefetchDepth) {
             return;
         }
 
         for (String assoc : tp.getAssociations()) {
-
             boolean collection = tp.isCollectionAssociation(assoc);
             if (collAssocBanned && collection) {
                 continue;
@@ -138,17 +134,15 @@ public class ExtentManager implements Serializable {
             long accessed = tp.getSubProfileStats(assoc).getAccessed();
             long total = tp.getSubProfileStats(assoc).getTotal();
 
-            double localAccessPercentage =
-                (double) accessed / (double) total;
+            double localAccessPercentage = (double) accessed / (double) total;
             double accessPercentage = localAccessPercentage * parentProbability;
-            if (accessPercentage > fetchParam) {                    //This part is vague, what happens if it is an collection? When is it "banned"?
+            if (accessPercentage > fetchParam) {                    // This part is vague, what happens if it is an collection? When is it "banned"?
                 boolean wasCollAssocBanned = collAssocBanned;
                 collAssocBanned = collAssocBanned || collection;
                 Path newPath = prefix.addTraversal(assoc);
                 paths.add(newPath);
                 TraversalProfile subProfile = tp.getSubProfile(assoc);
-                getPrefetchPaths(subProfile, newPath, paths, accessPercentage,
-                    wasCollAssocBanned);
+                getPrefetchPaths(subProfile, newPath, paths, accessPercentage, wasCollAssocBanned);
             }
         }
     }
@@ -160,11 +154,8 @@ public class ExtentManager implements Serializable {
      */
     public String printable() {
         StringBuilder result = new StringBuilder();
-        Iterator extentsIter = tpMap.entrySet().iterator();
-        while (extentsIter.hasNext()) {
-            Map.Entry entry = (Map.Entry) extentsIter.next();
-            result.append(entry.getKey() + "\r\n--> " + entry.getValue()
-                + "\r\n\r\n");
+        for (Map.Entry<QueryProgramStatePair, TraversalProfile> entry : tpMap.entrySet()) {
+            result.append(entry.getKey()).append("\r\n--> ").append(entry.getValue()).append("\r\n\r\n");
         }
 
         return result.toString();
@@ -182,7 +173,7 @@ public class ExtentManager implements Serializable {
      *
      * @author aibrahim
      */
-    public static class QueryProgramStatePair implements Serializable {
+    private static class QueryProgramStatePair implements Serializable {
 
         private String queryRootClasses;
 
@@ -191,10 +182,10 @@ public class ExtentManager implements Serializable {
         /**
          * Constructor
          *
-         * @param qrc query identifier
+         * @param qrc   query identifier
          * @param state program state
          */
-        public QueryProgramStatePair(String qrc, ProgramStack state) {
+        QueryProgramStatePair(String qrc, ProgramStack state) {
             this.queryRootClasses = qrc;
             this.state = state;
         }
@@ -202,6 +193,7 @@ public class ExtentManager implements Serializable {
         /**
          * @see java.lang.Object#hashCode()
          */
+        @Override
         public int hashCode() {
             return 37 * queryRootClasses.hashCode() + state.hashCode();
         }
@@ -209,18 +201,20 @@ public class ExtentManager implements Serializable {
         /**
          * @see java.lang.Object#equals(java.lang.Object)
          */
+        @Override
         public boolean equals(Object o) {
             if (!(o instanceof QueryProgramStatePair)) {
                 return false;
             }
+
             QueryProgramStatePair other = (QueryProgramStatePair) o;
-            return queryRootClasses.equals(other.queryRootClasses)
-                && state.equals(other.state);
+            return queryRootClasses.equals(other.queryRootClasses) && state.equals(other.state);
         }
 
         /**
          * @see java.lang.Object#toString()
          */
+        @Override
         public String toString() {
             return "(" + queryRootClasses + " , " + state + ")";
         }

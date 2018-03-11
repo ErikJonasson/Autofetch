@@ -3,10 +3,8 @@
  */
 package org.autofetch.test;
 
-import java.util.Iterator;
-import org.autofetch.hibernate.AutofetchConfiguration;
 import org.autofetch.hibernate.AutofetchCriteria;
-import org.autofetch.hibernate.AutofetchEventListenerRegistryImpl;
+import org.autofetch.hibernate.AutofetchService;
 import org.autofetch.hibernate.ExtentManager;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.TraversalProfile;
@@ -15,19 +13,13 @@ import org.hibernate.Hibernate;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.Query;
 import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.criterion.Restrictions;
-import org.hibernate.event.service.spi.EventListenerRegistry;
-import org.hibernate.service.ServiceRegistry;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
-import org.hibernate.tool.hbm2ddl.SchemaExport;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Iterator;
 
 /**
  * Test the gathering of extent statistics and use of fetch profile. The tests here assume a fetch depth greater than or equal to 3.
@@ -42,8 +34,6 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
     private static final int NUM_FRIENDS = 2;
 
     private ExtentManager em;
-
-    private SessionFactory sf;
 
     /**
      * Simple test that should always succeed. Right now it is being used to check that the test cases in this class are being run correctly.
@@ -705,8 +695,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         try {
             sess = openSession();
             tx = sess.beginTransaction();
-            Criteria crit = new AutofetchCriteria(sess
-                .createCriteria(Employee.class));
+            Criteria crit = new AutofetchCriteria(sess.createCriteria(Employee.class));
             crit.add(Restrictions.eq("id", daveId));
             Employee john = (Employee) crit.uniqueResult();
             john.getName();
@@ -752,7 +741,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             // Make some friends for e3
             for (int i = 0; i < NUM_FRIENDS; i++) {
                 Employee friend = new org.autofetch.test.Employee("Friend" + i, e2, e0,
-                    new Address("100 Friend St.", "Austin", "Texas"));
+                        new Address("100 Friend St.", "Austin", "Texas"));
                 e3.addFriend(friend);
             }
 
@@ -778,12 +767,12 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             sess = openSession();
             tx = sess.beginTransaction();
             Employee grandfather = new org.autofetch.test.Employee("Grandfather", null, null,
-                new Address("100 Main St.", "Austin", "Texas"));
+                    new Address("100 Main St.", "Austin", "Texas"));
             for (int i = 0; i < NUM_SUBORDINATES; i++) {
                 Employee childMentor = new Employee("Mentor" + i, null, null,
-                    new Address("101 Main St.", "Austin", "Texas"));
+                        new Address("101 Main St.", "Austin", "Texas"));
                 Employee child = new Employee("Child" + i, grandfather, childMentor,
-                    new Address("100 Main St.", "Austin", "Texas"));
+                        new Address("100 Main St.", "Austin", "Texas"));
                 grandfather.addSubordinate(child);
             }
             sess.save(grandfather);
@@ -803,36 +792,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
     }
 
     @Override
-    protected void configure(Configuration configuration) {
-
-    }
-
-    @Before
-    public void setUp() {
-        try {
-        	em = new ExtentManager();
-        	ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder().addService(EventListenerRegistry.class, new AutofetchEventListenerRegistryImpl(em)).build();
-        		AutofetchConfiguration cfg = (AutofetchConfiguration) new AutofetchConfiguration();
-        		sf = cfg.buildSessionFactory(serviceRegistry, em);
-        		SchemaExport se = new SchemaExport(cfg);
-        		se.create(false, true);
-        }
-        catch (Throwable ex) {
-            System.err.println("Initial SessionFactory creation failed." + ex);
-            throw new ExceptionInInitializerError(ex);
-        }
-    }
-
-//        AutofetchConfiguration cfg = new AutofetchConfiguration();
-//        cfg.configure();
-//        em = cfg.getExtentManager();
-//        sf = cfg.buildSessionFactory();
-//        SchemaExport se = new SchemaExport(cfg);
-//        se.create(false, true);
-//    }
-
-    @After
-    public void tearDown() {
-        sf.close();
+    protected void afterSessionFactoryBuilt() {
+        this.em = serviceRegistry().getService(AutofetchService.class).getExtentManager();
     }
 }
