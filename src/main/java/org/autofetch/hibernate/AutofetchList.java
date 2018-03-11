@@ -1,17 +1,19 @@
 /**
  * This file is part of Autofetch.
  * Autofetch is free software: you can redistribute it and/or modify
- * it under the terms of the Lesser GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version. Autofetch is distributed in the 
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
- * PURPOSE.  See the Lesser GNU General Public License for more details. You 
- * should have received a copy of the Lesser GNU General Public License along 
+ * it under the terms of the Lesser GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. Autofetch is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the Lesser GNU General Public License for more details. You
+ * should have received a copy of the Lesser GNU General Public License along
  * with Autofetch.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 package org.autofetch.hibernate;
+
+import org.hibernate.collection.internal.PersistentList;
+import org.hibernate.engine.spi.SessionImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -19,26 +21,19 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-import org.autofetch.hibernate.CollectionTracker;
-import org.autofetch.hibernate.Statistics;
-import org.autofetch.hibernate.Trackable;
-import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.collection.internal.PersistentList;
-
 /**
  * Based on org.hibernate.collection.PersistentList.
  * Usually delegates to super class except when operation
  * might add an element. In that case, it re-implements
  * the method so that it can record an access before the
  * element is added.
- * 
- * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  *
+ * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 @SuppressWarnings("unchecked")
 public class AutofetchList extends PersistentList implements Trackable {
-    private CollectionTracker collectionTracker =
-        new CollectionTracker();
+
+    private final CollectionTracker collectionTracker = new CollectionTracker();
 
     public AutofetchList() {
         super();
@@ -52,26 +47,31 @@ public class AutofetchList extends PersistentList implements Trackable {
         super(si);
     }
 
+    @Override
     public void addTracker(Statistics tracker) {
         collectionTracker.addTracker(tracker);
     }
 
+    @Override
     public void addTrackers(Set<Statistics> trackers) {
         collectionTracker.addTrackers(trackers);
     }
 
+    @Override
     public boolean disableTracking() {
         boolean oldValue = collectionTracker.isTracking();
         collectionTracker.setTracking(false);
         return oldValue;
     }
 
+    @Override
     public boolean enableTracking() {
         boolean oldValue = collectionTracker.isTracking();
         collectionTracker.setTracking(true);
         return oldValue;
     }
 
+    @Override
     public void removeTracker(Statistics stats) {
         collectionTracker.removeTracker(stats);
     }
@@ -81,7 +81,7 @@ public class AutofetchList extends PersistentList implements Trackable {
             collectionTracker.trackAccess(list);
         }
     }
-    
+
     /**
      * @see java.util.Set#size()
      */
@@ -159,13 +159,12 @@ public class AutofetchList extends PersistentList implements Trackable {
      */
     @Override
     public boolean add(Object value) {
-        if ( !isOperationQueueEnabled() ) {
+        if (!isOperationQueueEnabled()) {
             write();
             accessed();
             return list.add(value);
-        }
-        else {
-           return super.add(value);
+        } else {
+            return super.add(value);
         }
     }
 
@@ -198,17 +197,18 @@ public class AutofetchList extends PersistentList implements Trackable {
      */
     @Override
     public boolean addAll(Collection values) {
-        if ( values.size()==0 ) return false;
-        if ( !isOperationQueueEnabled() ) {
+        if (values.size() == 0) {
+            return false;
+        }
+        if (!isOperationQueueEnabled()) {
             write();
             accessed();
             return list.addAll(values);
-        }
-        else {
+        } else {
             return super.addAll(values);
         }
     }
-    
+
     /**
      * @see java.util.Set#retainAll(Collection)
      */
@@ -240,21 +240,20 @@ public class AutofetchList extends PersistentList implements Trackable {
             accessed();
         }
     }
-    
+
     /**
      * @see java.util.List#add(int, Object)
      */
     @Override
     public void add(int index, Object value) {
-        if (index<0) {
+        if (index < 0) {
             throw new ArrayIndexOutOfBoundsException("negative index");
         }
-        if ( !isOperationQueueEnabled() ) {
+        if (!isOperationQueueEnabled()) {
             write();
             accessed();
             list.add(index, value);
-        }
-        else {
+        } else {
             super.add(index, value);
         }
     }
@@ -264,12 +263,11 @@ public class AutofetchList extends PersistentList implements Trackable {
      */
     @Override
     public boolean addAll(int i, Collection c) {
-        if ( c.size()>0 ) {
+        if (c.size() > 0) {
             write();
             accessed();
             return list.addAll(i, c);
-        }
-        else {
+        } else {
             return false;
         }
     }
@@ -351,16 +349,16 @@ public class AutofetchList extends PersistentList implements Trackable {
      */
     @Override
     public Object set(int index, Object value) {
-        if (index<0) {
+        if (index < 0) {
             throw new ArrayIndexOutOfBoundsException("negative index");
         }
-        Object old = isPutQueueEnabled() ? readElementByIndex( new Integer(index) ) : UNKNOWN;
-        if ( old==UNKNOWN ) {
+
+        Object old = isPutQueueEnabled() ? readElementByIndex(index) : UNKNOWN;
+        if (old == UNKNOWN) {
             write();
             accessed();
             return list.set(index, value);
-        }
-        else {
+        } else {
             return super.set(index, value);
         }
     }
@@ -376,7 +374,7 @@ public class AutofetchList extends PersistentList implements Trackable {
         }
         return val;
     }
-    
+
     @Override
     public String toString() {
         //if (needLoading) return "asleep";
@@ -404,7 +402,8 @@ public class AutofetchList extends PersistentList implements Trackable {
         }
         return ret;
     }
-    
+
+    @Override
     public boolean isAccessed() {
         return collectionTracker.isAccessed();
     }

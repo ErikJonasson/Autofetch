@@ -3,6 +3,9 @@
  */
 package org.autofetch.test;
 
+import org.autofetch.hibernate.AutofetchTuplizer;
+import org.hibernate.annotations.Tuplizer;
+
 import javax.persistence.Basic;
 import javax.persistence.Embeddable;
 
@@ -11,6 +14,7 @@ import javax.persistence.Embeddable;
  *
  * @author aibrahim
  */
+@Tuplizer(impl = AutofetchTuplizer.class)
 @Embeddable
 public class Address {
 

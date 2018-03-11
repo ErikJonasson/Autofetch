@@ -3,8 +3,9 @@
  */
 package org.autofetch.test;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.autofetch.hibernate.AutofetchTuplizer;
+import org.hibernate.annotations.Tuplizer;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
@@ -17,18 +18,19 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author aibrahim
  */
-
 @Entity
-
+@Tuplizer(impl = AutofetchTuplizer.class)
 public class Employee {
-	
+
     @Id
     @Column(name = "employee_id")
-    @GeneratedValue(strategy=GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long m_id;
 
     @Column(name = "name")
@@ -63,7 +65,7 @@ public class Employee {
     /**
      * Creates employee with name and supervisor and no subordinates
      *
-     * @param name should be unique and not null
+     * @param name       should be unique and not null
      * @param supervisor employee supervisor, null indicates no supervisor.
      */
     public Employee(String name, Employee supervisor, Employee mentor, Address addr) {
@@ -147,7 +149,7 @@ public class Employee {
     @Override
     public boolean equals(Object other) {
         return (other instanceof Employee)
-            && ((Employee) other).m_name.equals(m_name);
+                && ((Employee) other).m_name.equals(m_name);
     }
 
     @Override
