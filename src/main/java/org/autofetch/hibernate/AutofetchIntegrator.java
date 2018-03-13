@@ -10,6 +10,7 @@
 package org.autofetch.hibernate;
 
 import com.google.auto.service.AutoService;
+import org.hibernate.EntityMode;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -17,9 +18,12 @@ import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
 import org.hibernate.integrator.spi.Integrator;
 import org.hibernate.integrator.spi.ServiceContributingIntegrator;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.source.MetadataImplementor;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
+
+import java.util.Iterator;
 
 @AutoService(Integrator.class)
 public class AutofetchIntegrator implements ServiceContributingIntegrator {
@@ -37,6 +41,12 @@ public class AutofetchIntegrator implements ServiceContributingIntegrator {
     public void integrate(Configuration configuration, SessionFactoryImplementor sessionFactory,
                           SessionFactoryServiceRegistry serviceRegistry) {
         doIntegrate(serviceRegistry);
+
+        final Iterator<PersistentClass> classMappings = configuration.getClassMappings();
+        while (classMappings.hasNext()) {
+            PersistentClass persistentClass = classMappings.next();
+            persistentClass.addTuplizer(EntityMode.POJO, AutofetchTuplizer.class.getName());
+        }
     }
 
     @Override

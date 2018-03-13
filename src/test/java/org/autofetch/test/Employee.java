@@ -6,7 +6,6 @@ package org.autofetch.test;
 import org.autofetch.hibernate.AutofetchTuplizer;
 import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Tuplizer;
-
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
@@ -27,7 +26,6 @@ import java.util.Set;
  * @author aibrahim
  */
 @Entity
-@Tuplizer(impl = AutofetchTuplizer.class)
 public class Employee {
 
     @Id
