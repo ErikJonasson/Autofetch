@@ -25,6 +25,7 @@ import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
 import java.util.Iterator;
 
+@SuppressWarnings("unused")
 @AutoService(Integrator.class)
 public class AutofetchIntegrator implements ServiceContributingIntegrator {
 
@@ -46,13 +47,22 @@ public class AutofetchIntegrator implements ServiceContributingIntegrator {
         while (classMappings.hasNext()) {
             PersistentClass persistentClass = classMappings.next();
             persistentClass.addTuplizer(EntityMode.POJO, AutofetchTuplizer.class.getName());
+
+            final Iterator propertyIterator = persistentClass.getPropertyIterator();
+            while (propertyIterator.hasNext()) {
+                org.hibernate.mapping.Property property = (org.hibernate.mapping.Property) propertyIterator.next();
+                String name = property.getName();
+                if (property.getValue() instanceof org.hibernate.mapping.Collection) {
+                    replaceCollection(property, persistentClass);
+                }
+            }
         }
     }
 
     @Override
-    public void integrate(MetadataImplementor metadata, SessionFactoryImplementor sessionFactory,
+    public void integrate(MetadataImplementor metadata,
+                          SessionFactoryImplementor sessionFactory,
                           SessionFactoryServiceRegistry serviceRegistry) {
-        doIntegrate(serviceRegistry);
     }
 
     private void doIntegrate(ServiceRegistry serviceRegistry) {
@@ -63,5 +73,25 @@ public class AutofetchIntegrator implements ServiceContributingIntegrator {
 
         eventListenerRegistry.setListeners(EventType.INIT_COLLECTION,
                 new AutofetchInitializeCollectionListener(extentManager));
+    }
+
+    private static void replaceCollection(org.hibernate.mapping.Property collectionProperty, PersistentClass owner) {
+        if (!(collectionProperty.getValue() instanceof org.hibernate.mapping.Collection)) {
+            return;
+        }
+
+        org.hibernate.mapping.Collection value = (org.hibernate.mapping.Collection) collectionProperty.getValue();
+
+        if (value instanceof org.hibernate.mapping.Bag) {
+            value.setTypeName(AutofetchBagType.class.getName());
+        } else if (value instanceof org.hibernate.mapping.IdentifierBag) {
+            value.setTypeName(AutofetchIdBagType.class.getName());
+        } else if (value instanceof org.hibernate.mapping.List) {
+            value.setTypeName(AutofetchListType.class.getName());
+        } else if (value instanceof org.hibernate.mapping.Set) {
+            value.setTypeName(AutofetchSetType.class.getName());
+        } else {
+            throw new UnsupportedOperationException("Collection type not supported: " + value.getClass());
+        }
     }
 }

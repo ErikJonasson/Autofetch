@@ -40,9 +40,6 @@ import java.util.Map;
  */
 public class AutofetchLoadListener extends DefaultLoadEventListener {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = 1L;
 
     private static final Log log = LogFactory.getLog(AutofetchLoadListener.class);

@@ -53,13 +53,7 @@ public class AutofetchProxyFactory implements ProxyFactory {
         @SuppressWarnings("unchecked")
         Iterator<Property> propIter = pc.getPropertyClosureIterator();
         while (propIter.hasNext()) {
-            Property prop = propIter.next();
-            org.autofetch.hibernate.Property p = new org.autofetch.hibernate.Property(
-                    prop.getName(),
-                    prop.getType().isCollectionType()
-            );
-
-            this.persistentProperties.add(p);
+            this.persistentProperties.add(new org.autofetch.hibernate.Property(propIter.next()));
         }
     }
 

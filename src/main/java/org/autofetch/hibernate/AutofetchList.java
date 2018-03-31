@@ -22,7 +22,7 @@ import java.util.ListIterator;
 import java.util.Set;
 
 /**
- * Based on org.hibernate.collection.PersistentList.
+ * Based on {@link PersistentList}.
  * Usually delegates to super class except when operation
  * might add an element. In that case, it re-implements
  * the method so that it can record an access before the
@@ -35,51 +35,46 @@ public class AutofetchList extends PersistentList implements Trackable {
 
     private final CollectionTracker collectionTracker = new CollectionTracker();
 
-    public AutofetchList() {
-        super();
+    @SuppressWarnings("unused")
+    protected AutofetchList() {
+        // Available only for serialization.
     }
 
-    public AutofetchList(SessionImplementor si, List s) {
-        super(si, s);
+    public AutofetchList(SessionImplementor session) {
+        super(session);
     }
 
-    public AutofetchList(SessionImplementor si) {
-        super(si);
+    public AutofetchList(SessionImplementor session, List list) {
+        super(session, list);
     }
 
     @Override
     public void addTracker(Statistics tracker) {
-        collectionTracker.addTracker(tracker);
+        this.collectionTracker.addTracker(tracker);
     }
 
     @Override
     public void addTrackers(Set<Statistics> trackers) {
-        collectionTracker.addTrackers(trackers);
+        this.collectionTracker.addTrackers(trackers);
     }
 
     @Override
     public boolean disableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(false);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(false);
         return oldValue;
     }
 
     @Override
     public boolean enableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(true);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(true);
         return oldValue;
     }
 
     @Override
     public void removeTracker(Statistics stats) {
-        collectionTracker.removeTracker(stats);
-    }
-
-    private void accessed() {
-        if (wasInitialized()) {
-            collectionTracker.trackAccess(list);
-        }
+        this.collectionTracker.removeTracker(stats);
     }
 
     /**
@@ -88,9 +83,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public int size() {
         int ret = super.size();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -100,9 +93,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public boolean isEmpty() {
         boolean ret = super.isEmpty();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -112,9 +103,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public boolean contains(Object object) {
         boolean ret = super.contains(object);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -124,9 +113,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public Iterator iterator() {
         Iterator iter = super.iterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return iter;
     }
 
@@ -136,9 +123,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public Object[] toArray() {
         Object[] arr = super.toArray();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -148,9 +133,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public Object[] toArray(Object[] array) {
         Object[] arr = super.toArray(array);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -159,13 +142,13 @@ public class AutofetchList extends PersistentList implements Trackable {
      */
     @Override
     public boolean add(Object value) {
-        if (!isOperationQueueEnabled()) {
-            write();
-            accessed();
-            return list.add(value);
-        } else {
+        if (isOperationQueueEnabled()) {
             return super.add(value);
         }
+
+        this.write();
+        this.accessed();
+        return list.add(value);
     }
 
     /**
@@ -174,9 +157,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public boolean remove(Object value) {
         boolean ret = super.remove(value);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -186,9 +167,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public boolean containsAll(Collection coll) {
         boolean ret = super.containsAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -200,13 +179,14 @@ public class AutofetchList extends PersistentList implements Trackable {
         if (values.size() == 0) {
             return false;
         }
-        if (!isOperationQueueEnabled()) {
-            write();
-            accessed();
-            return list.addAll(values);
-        } else {
+
+        if (isOperationQueueEnabled()) {
             return super.addAll(values);
         }
+
+        this.write();
+        this.accessed();
+        return list.addAll(values);
     }
 
     /**
@@ -215,9 +195,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public boolean retainAll(Collection coll) {
         boolean val = super.retainAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -227,18 +205,14 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public boolean removeAll(Collection coll) {
         boolean val = super.removeAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
     @Override
     public void clear() {
         super.clear();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
     }
 
     /**
@@ -249,10 +223,11 @@ public class AutofetchList extends PersistentList implements Trackable {
         if (index < 0) {
             throw new ArrayIndexOutOfBoundsException("negative index");
         }
+
         if (!isOperationQueueEnabled()) {
             write();
-            accessed();
-            list.add(index, value);
+            this.accessed();
+            this.list.add(index, value);
         } else {
             super.add(index, value);
         }
@@ -265,11 +240,11 @@ public class AutofetchList extends PersistentList implements Trackable {
     public boolean addAll(int i, Collection c) {
         if (c.size() > 0) {
             write();
-            accessed();
+            this.accessed();
             return list.addAll(i, c);
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
@@ -278,9 +253,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public Object get(int i) {
         Object val = super.get(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -290,9 +263,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public int indexOf(Object o) {
         int val = super.indexOf(o);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -302,9 +273,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public int lastIndexOf(Object o) {
         int val = super.lastIndexOf(o);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -314,9 +283,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public ListIterator listIterator() {
         ListIterator val = super.listIterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -326,9 +293,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public ListIterator listIterator(int i) {
         ListIterator val = super.listIterator(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -338,9 +303,7 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public Object remove(int i) {
         Object val = super.remove(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -358,9 +321,9 @@ public class AutofetchList extends PersistentList implements Trackable {
             write();
             accessed();
             return list.set(index, value);
-        } else {
-            return super.set(index, value);
         }
+
+        return super.set(index, value);
     }
 
     /**
@@ -369,42 +332,39 @@ public class AutofetchList extends PersistentList implements Trackable {
     @Override
     public List subList(int start, int end) {
         List val = super.subList(start, end);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
     @Override
     public String toString() {
-        //if (needLoading) return "asleep";
         String ret = super.toString();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public boolean equals(Object other) {
         boolean ret = super.equals(other);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public int hashCode() {
         int ret = super.hashCode();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public boolean isAccessed() {
-        return collectionTracker.isAccessed();
+        return this.collectionTracker.isAccessed();
+    }
+
+    private void accessed() {
+        if (this.wasInitialized()) {
+            this.collectionTracker.trackAccess(this.list);
+        }
     }
 }

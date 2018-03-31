@@ -40,46 +40,48 @@ import java.util.Set;
  * Wrapper around Hibernate criteria queries which performs prefetch.
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
- *
  */
 public class AutofetchCriteria implements Criteria {
 
     private static final Log log = LogFactory.getLog(AutofetchLoadListener.class);
 
-    private CriteriaImpl delegate;
+    private final CriteriaImpl delegate;
 
-    public AutofetchCriteria(CriteriaImpl ci) {
-        delegate = ci;
+    public AutofetchCriteria(CriteriaImpl criteria) {
+        this.delegate = criteria;
     }
 
     /**
      * Convenience method which casts argument to CriteriaImpl
-     * @param ci must be a CriteriaImpl
+     *
+     * @param criteria must be a CriteriaImpl
      */
-    public AutofetchCriteria(Criteria ci) {
-        delegate = (CriteriaImpl) ci;
+    public AutofetchCriteria(Criteria criteria) {
+        this.delegate = (CriteriaImpl) criteria;
     }
 
     @Override
     public List list() throws HibernateException {
-        String classname = delegate.getEntityOrClassName();
+        String classname = this.delegate.getEntityOrClassName();
 
         /// Add prefetch directives as needed
-        addPrefetch(delegate, classname);
-        Iterator subCriteria = delegate.iterateSubcriteria();
+        addPrefetch(this.delegate, classname);
+        Iterator subCriteria = this.delegate.iterateSubcriteria();
         while (subCriteria.hasNext()) {
             Criteria sc = (Criteria) subCriteria.next();
             addPrefetch(sc, makeTpKey(classname, sc.getAlias()));
         }
 
-        List l = delegate.list();
+        List results = this.delegate.list();
+
         // Mark results of query as root entities
         ResultTransformer rt = delegate.getResultTransformer();
+
         // We can only handle transformers we know.
         if (rt.equals(Criteria.DISTINCT_ROOT_ENTITY)
                 || rt.equals(Criteria.ROOT_ENTITY)
                 || rt.equals(Criteria.ALIAS_TO_ENTITY_MAP)) {
-            for (Object o : l) {
+            for (Object o : results) {
                 if (rt.equals(Criteria.ALIAS_TO_ENTITY_MAP)) {
                     Map m = (Map) o;
                     Set aliasKeys = m.keySet();
@@ -90,77 +92,62 @@ public class AutofetchCriteria implements Criteria {
                 } else {
                     getExtentManager().markAsRoot(o, classname);
                 }
-
             }
         }
-        return l;
-    }
 
-    private void addPrefetch(Criteria crit, String tpKey) {
-        List<Path> prefetchPaths = getExtentManager().getPrefetchPaths(tpKey);
-        if (log.isDebugEnabled()) {
-            log.debug("Prefetch paths for " + tpKey + ": " + prefetchPaths);
-        }
-        for (Path p : prefetchPaths) {
-            crit.setFetchMode(p.toString(), FetchMode.JOIN);
-        }
-    }
-
-    private String makeTpKey(String classname, Object alias) {
-        return classname + ":" + alias;
+        return results;
     }
 
     @Override
     public Object uniqueResult() throws HibernateException {
-        String classname = delegate.getEntityOrClassName();
-        addPrefetch(delegate, classname);
-        Object o = delegate.uniqueResult();
+        String classname = this.delegate.getEntityOrClassName();
+        addPrefetch(this.delegate, classname);
+        Object o = this.delegate.uniqueResult();
         getExtentManager().markAsRoot(o, classname);
         return o;
     }
 
-    private ExtentManager getExtentManager() {
-        return delegate.getSession().getFactory().getServiceRegistry().getService(AutofetchService.class).getExtentManager();
+    @Override
+    public Criteria add(Criterion criterion) {
+        return this.delegate.add(criterion);
     }
 
     @Override
-    public Criteria add(Criterion arg0) {
-        return delegate.add(arg0);
+    public Criteria addOrder(Order ordering) {
+        return delegate.addOrder(ordering);
     }
 
     @Override
-    public Criteria addOrder(Order arg0) {
-        return delegate.addOrder(arg0);
+    @Deprecated
+    public Criteria createAlias(String associationPath, String alias, int joinType) {
+        return delegate.createAlias(associationPath, alias, joinType);
     }
 
     @Override
-    public Criteria createAlias(String arg0, String arg1, int arg2) {
-        return delegate.createAlias(arg0, arg1, arg2);
+    public Criteria createAlias(String associationPath, String alias) {
+        return delegate.createAlias(associationPath, alias);
     }
 
     @Override
-    public Criteria createAlias(String arg0, String arg1) {
-        return delegate.createAlias(arg0, arg1);
+    @Deprecated
+    public Criteria createCriteria(String associationPath, int joinType) {
+        return delegate.createCriteria(associationPath, joinType);
     }
 
     @Override
-    public Criteria createCriteria(String arg0, int arg1) {
-        return delegate.createCriteria(arg0, arg1);
+    @Deprecated
+    public Criteria createCriteria(String associationPath, String alias, int joinType) {
+        return delegate.createCriteria(associationPath, alias, joinType);
     }
 
     @Override
-    public Criteria createCriteria(String arg0, String arg1, int arg2) {
-        return delegate.createCriteria(arg0, arg1, arg2);
+    public Criteria createCriteria(String associationPath, String alias) {
+        return delegate.createCriteria(associationPath, alias);
     }
 
     @Override
-    public Criteria createCriteria(String arg0, String arg1) {
-        return delegate.createCriteria(arg0, arg1);
-    }
-
-    @Override
-    public Criteria createCriteria(String arg0) {
-        return delegate.createCriteria(arg0);
+    public Criteria createCriteria(String associationPath) {
+        return delegate.createCriteria(associationPath);
     }
 
     @Override
@@ -169,78 +156,78 @@ public class AutofetchCriteria implements Criteria {
     }
 
     @Override
-    public ScrollableResults scroll(ScrollMode arg0) {
-        return delegate.scroll(arg0);
+    public ScrollableResults scroll(ScrollMode scrollMode) {
+        return delegate.scroll(scrollMode);
     }
 
     @Override
-    public Criteria setCacheable(boolean arg0) {
-        return delegate.setCacheable(arg0);
+    public Criteria setCacheable(boolean cacheable) {
+        return delegate.setCacheable(cacheable);
     }
 
     @Override
-    public Criteria setCacheMode(CacheMode arg0) {
-        return delegate.setCacheMode(arg0);
+    public Criteria setCacheMode(CacheMode cacheMode) {
+        return delegate.setCacheMode(cacheMode);
     }
 
     @Override
-    public Criteria setCacheRegion(String arg0) {
-        return delegate.setCacheRegion(arg0);
+    public Criteria setCacheRegion(String cacheRegion) {
+        return delegate.setCacheRegion(cacheRegion);
     }
 
     @Override
-    public Criteria setComment(String arg0) {
-        return delegate.setComment(arg0);
+    public Criteria setComment(String comment) {
+        return delegate.setComment(comment);
     }
 
     @Override
-    public Criteria setFetchMode(String arg0, FetchMode arg1) {
-        return delegate.setFetchMode(arg0, arg1);
+    public Criteria setFetchMode(String associationPath, FetchMode fetchMode) {
+        return delegate.setFetchMode(associationPath, fetchMode);
     }
 
     @Override
-    public Criteria setFetchSize(int arg0) {
-        return delegate.setFetchSize(arg0);
+    public Criteria setFetchSize(int fetchSize) {
+        return delegate.setFetchSize(fetchSize);
     }
 
     @Override
-    public Criteria setFirstResult(int arg0) {
-        return delegate.setFirstResult(arg0);
+    public Criteria setFirstResult(int firstResult) {
+        return delegate.setFirstResult(firstResult);
     }
 
     @Override
-    public Criteria setFlushMode(FlushMode arg0) {
-        return delegate.setFlushMode(arg0);
+    public Criteria setFlushMode(FlushMode flushMode) {
+        return delegate.setFlushMode(flushMode);
     }
 
     @Override
-    public Criteria setLockMode(LockMode arg0) {
-        return delegate.setLockMode(arg0);
+    public Criteria setLockMode(LockMode lockMode) {
+        return delegate.setLockMode(lockMode);
     }
 
     @Override
-    public Criteria setLockMode(String arg0, LockMode arg1) {
-        return delegate.setLockMode(arg0, arg1);
+    public Criteria setLockMode(String alias, LockMode lockMode) {
+        return delegate.setLockMode(alias, lockMode);
     }
 
     @Override
-    public Criteria setMaxResults(int arg0) {
-        return delegate.setMaxResults(arg0);
+    public Criteria setMaxResults(int maxResults) {
+        return delegate.setMaxResults(maxResults);
     }
 
     @Override
-    public Criteria setProjection(Projection arg0) {
-        return delegate.setProjection(arg0);
+    public Criteria setProjection(Projection projection) {
+        return delegate.setProjection(projection);
     }
 
     @Override
-    public Criteria setResultTransformer(ResultTransformer arg0) {
-        return delegate.setResultTransformer(arg0);
+    public Criteria setResultTransformer(ResultTransformer tupleMapper) {
+        return delegate.setResultTransformer(tupleMapper);
     }
 
     @Override
-    public Criteria setTimeout(int arg0) {
-        return delegate.setTimeout(arg0);
+    public Criteria setTimeout(int setTimeout) {
+        return delegate.setTimeout(setTimeout);
     }
 
     @Override
@@ -249,102 +236,82 @@ public class AutofetchCriteria implements Criteria {
     }
 
     @Override
+    @Deprecated
     public Criteria createAlias(String associationPath, String alias, int joinType, Criterion withClause)
             throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createAlias(associationPath, alias, joinType, withClause);
     }
 
     @Override
+    @Deprecated
     public Criteria createCriteria(String associationPath, String alias, int joinType, Criterion withClause)
             throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createCriteria(associationPath, alias, joinType, withClause);
     }
 
     @Override
     public boolean isReadOnlyInitialized() {
-        // TODO Auto-generated method stub
-        return false;
+        return this.delegate.isReadOnlyInitialized();
     }
 
     @Override
     public boolean isReadOnly() {
-        // TODO Auto-generated method stub
-        return false;
+        return this.delegate.isReadOnly();
     }
 
     @Override
     public Criteria setReadOnly(boolean readOnly) {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.setReadOnly(readOnly);
     }
 
     @Override
     public Criteria createAlias(String associationPath, String alias, JoinType joinType) throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createCriteria(associationPath, alias, joinType);
     }
 
     @Override
     public Criteria createAlias(String associationPath, String alias, JoinType joinType, Criterion withClause)
             throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createCriteria(associationPath, alias, joinType, withClause);
     }
 
     @Override
     public Criteria createCriteria(String associationPath, JoinType joinType) throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createCriteria(associationPath, joinType);
     }
 
     @Override
     public Criteria createCriteria(String associationPath, String alias, JoinType joinType) throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createCriteria(associationPath, alias, joinType);
     }
 
     @Override
     public Criteria createCriteria(String associationPath, String alias, JoinType joinType, Criterion withClause)
             throws HibernateException {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.createCriteria(associationPath, alias, joinType, withClause);
     }
 
     @Override
     public Criteria addQueryHint(String hint) {
-        // TODO Auto-generated method stub
-        return null;
+        return this.delegate.addQueryHint(hint);
     }
 
-//	@Override
-//	public Criteria createAlias(String arg0, String arg1, int arg2, Criterion arg3) throws HibernateException {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public Criteria createCriteria(String arg0, String arg1, int arg2, Criterion arg3) throws HibernateException {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-//
-//	@Override
-//	public boolean isReadOnly() {
-//		// TODO Auto-generated method stub
-//		return false;
-//	}
-//
-//	@Override
-//	public boolean isReadOnlyInitialized() {
-//		// TODO Auto-generated method stub
-//		return false;
-//	}
-//
-//	@Override
-//	public Criteria setReadOnly(boolean arg0) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
+    private void addPrefetch(Criteria crit, String tpKey) {
+        List<Path> prefetchPaths = getExtentManager().getPrefetchPaths(tpKey);
+        if (log.isDebugEnabled()) {
+            log.debug("Prefetch paths for " + tpKey + ": " + prefetchPaths);
+        }
+
+        for (Path p : prefetchPaths) {
+            crit.setFetchMode(p.toString(), FetchMode.JOIN);
+        }
+    }
+
+    private ExtentManager getExtentManager() {
+        return this.delegate.getSession().getFactory().getServiceRegistry().getService(AutofetchService.class).getExtentManager();
+    }
+
+    private static String makeTpKey(String classname, Object alias) {
+        return classname + ":" + alias;
+    }
 }

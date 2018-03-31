@@ -40,11 +40,11 @@ public class AutofetchLazyInitializer extends BasicLazyInitializer implements Me
 
     private static final CoreMessageLogger LOG = CoreLogging.messageLogger(AutofetchLazyInitializer.class);
 
-    private EntityTracker entityTracker;
+    private final EntityTracker entityTracker;
+
+    private final Class[] interfaces;
 
     private boolean entityTrackersSet;
-
-    private Class[] interfaces;
 
     private boolean constructed;
 

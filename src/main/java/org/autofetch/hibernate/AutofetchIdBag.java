@@ -22,7 +22,7 @@ import java.util.ListIterator;
 import java.util.Set;
 
 /**
- * Based on org.hibernate.collection.PersistentIdentifierBag.
+ * Based on {@link PersistentIdentifierBag}.
  * Usually delegates to super class except when operation
  * might add an element. In that case, it re-implements
  * the method so that it can record an access before the
@@ -35,51 +35,46 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
 
     private final CollectionTracker collectionTracker = new CollectionTracker();
 
+    @SuppressWarnings("unused")
     public AutofetchIdBag() {
-        super();
+        // Available only for serialization.
     }
 
-    public AutofetchIdBag(SessionImplementor si, Collection s) {
-        super(si, s);
+    public AutofetchIdBag(SessionImplementor session) {
+        super(session);
     }
 
-    public AutofetchIdBag(SessionImplementor si) {
-        super(si);
+    public AutofetchIdBag(SessionImplementor session, Collection coll) {
+        super(session, coll);
     }
 
     @Override
     public void addTracker(Statistics tracker) {
-        collectionTracker.addTracker(tracker);
+        this.collectionTracker.addTracker(tracker);
     }
 
     @Override
     public void addTrackers(Set<Statistics> trackers) {
-        collectionTracker.addTrackers(trackers);
+        this.collectionTracker.addTrackers(trackers);
     }
 
     @Override
     public boolean disableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(false);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(false);
         return oldValue;
     }
 
     @Override
     public boolean enableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(true);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(true);
         return oldValue;
     }
 
     @Override
     public void removeTracker(Statistics stats) {
-        collectionTracker.removeTracker(stats);
-    }
-
-    private void accessed() {
-        if (wasInitialized()) {
-            collectionTracker.trackAccess(values);
-        }
+        this.collectionTracker.removeTracker(stats);
     }
 
     /**
@@ -88,9 +83,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public int size() {
         int ret = super.size();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -100,9 +93,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean isEmpty() {
         boolean ret = super.isEmpty();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -112,9 +103,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean contains(Object object) {
         boolean ret = super.contains(object);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -124,9 +113,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public Iterator iterator() {
         Iterator iter = super.iterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return iter;
     }
 
@@ -136,9 +123,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public Object[] toArray() {
         Object[] arr = super.toArray();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -148,9 +133,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public Object[] toArray(Object[] array) {
         Object[] arr = super.toArray(array);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -159,9 +142,9 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
      */
     @Override
     public boolean add(Object value) {
-        write();
-        accessed();
-        values.add(value);
+        this.write();
+        this.accessed();
+        this.values.add(value);
         return true;
     }
 
@@ -171,9 +154,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean remove(Object value) {
         boolean ret = super.remove(value);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -183,9 +164,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean containsAll(Collection coll) {
         boolean ret = super.containsAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -195,20 +174,18 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean addAll(Collection values) {
         if (values.size() > 0) {
-            write();
-            accessed();
+            this.write();
+            this.accessed();
             return values.addAll(values);
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     @Override
     public void clear() {
         super.clear();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
     }
 
     /**
@@ -217,9 +194,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean retainAll(Collection coll) {
         boolean val = super.retainAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -229,9 +204,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public boolean removeAll(Collection coll) {
         boolean val = super.removeAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -240,17 +213,10 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
      */
     @Override
     public void add(int index, Object element) {
-        write();
-        accessed();
-        beforeAdd(index);
-        values.add(index, element);
-    }
-
-    private void beforeAdd(int index) {
-        for (int i = index; i < values.size(); i++) {
-            identifiers.put(new Integer(i + 1), identifiers.get(new Integer(i)));
-        }
-        identifiers.remove(new Integer(index));
+        this.write();
+        this.accessed();
+        this.beforeAdd(index);
+        this.values.add(index, element);
     }
 
     /**
@@ -259,9 +225,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public Object get(int i) {
         Object val = super.get(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -271,9 +235,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public int indexOf(Object o) {
         int val = super.indexOf(o);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -283,9 +245,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public int lastIndexOf(Object o) {
         int val = super.lastIndexOf(o);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -295,9 +255,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public ListIterator listIterator() {
         ListIterator val = super.listIterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -307,9 +265,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public ListIterator listIterator(int i) {
         ListIterator val = super.listIterator(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -319,9 +275,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public Object remove(int i) {
         Object val = super.remove(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -330,8 +284,8 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
      */
     @Override
     public Object set(int index, Object element) {
-        write();
-        accessed();
+        this.write();
+        this.accessed();
         return values.set(index, element);
     }
 
@@ -341,9 +295,7 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     @Override
     public List subList(int start, int end) {
         List val = super.subList(start, end);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -351,32 +303,40 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
     public String toString() {
         //if (needLoading) return "asleep";
         String ret = super.toString();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public boolean equals(Object other) {
         boolean ret = super.equals(other);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public int hashCode() {
         int ret = super.hashCode();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public boolean isAccessed() {
         return collectionTracker.isAccessed();
+    }
+
+    private void beforeAdd(int index) {
+        for (int i = index; i < this.values.size(); i++) {
+            this.identifiers.put(i + 1, this.identifiers.get(i));
+        }
+
+        this.identifiers.remove(index);
+    }
+
+    private void accessed() {
+        if (this.wasInitialized()) {
+            this.collectionTracker.trackAccess(this.values);
+        }
     }
 }
