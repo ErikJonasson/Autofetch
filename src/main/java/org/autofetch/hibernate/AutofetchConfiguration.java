@@ -421,6 +421,9 @@ public class AutofetchConfiguration extends Configuration {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Configuration addAnnotatedClass(Class annotatedClass) {
+		if(manager == null) {
+			manager = getReflectionManager();
+		}
 		XClass xClass = manager.toXClass( annotatedClass );
 		metadataSourceQueue.add( xClass );
 		return this;

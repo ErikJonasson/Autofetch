@@ -58,7 +58,6 @@ public class AutofetchLoadListener extends DefaultLoadEventListener {
                                         EntityPersister entityPersister, EntityKey entityKey,
                                         LoadType loadType) throws HibernateException {
 
-
         String classname = entityPersister.getEntityName();
         if (log.isDebugEnabled()) {
             log.debug("Entity id: " + event.getEntityId());

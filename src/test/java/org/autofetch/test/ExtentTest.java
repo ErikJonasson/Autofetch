@@ -3,23 +3,44 @@
  */
 package org.autofetch.test;
 
+import org.autofetch.hibernate.AutofetchConfiguration;
 import org.autofetch.hibernate.AutofetchCriteria;
+import org.autofetch.hibernate.AutofetchIntegrator;
 import org.autofetch.hibernate.AutofetchService;
 import org.autofetch.hibernate.ExtentManager;
 import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.TraversalProfile;
 import org.hibernate.Criteria;
 import org.hibernate.Hibernate;
+import org.hibernate.HibernateException;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
+import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.boot.registry.internal.StandardServiceRegistryImpl;
+import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.cfg.Environment;
 import org.hibernate.criterion.Restrictions;
+import org.hibernate.dialect.H2Dialect;
+import org.hibernate.engine.config.spi.ConfigurationService;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.internal.util.config.ConfigurationHelper;
+import org.hibernate.metamodel.MetadataSources;
+import org.hibernate.metamodel.source.MetadataImplementor;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
+import org.hibernate.testing.junit4.Helper;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Iterator;
+import java.util.Properties;
 
 /**
  * Test the gathering of extent statistics and use of fetch profile. The tests here assume a fetch depth greater than or equal to 3.
@@ -34,6 +55,14 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
     private static final int NUM_FRIENDS = 2;
 
     private ExtentManager em;
+    
+    private AutofetchConfiguration cfg;
+    
+    private boolean isMetadataUsed;
+    
+    private StandardServiceRegistryImpl registry;
+    
+    private SessionFactory sf;
 
     /**
      * Simple test that should always succeed. Right now it is being used to check that the test cases in this class are being run correctly.
@@ -785,6 +814,98 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             }
         }
     }
+    
+    @Override
+	protected AutofetchConfiguration constructAndConfigureConfiguration() {
+		AutofetchConfiguration cfg = constructConfiguration();
+		cfg.addAnnotatedClass(org.autofetch.test.Employee.class);
+		// Should this really be done in the case of Annotations? 
+		configure( cfg );
+		return cfg;
+	}
+	@Override
+	protected AutofetchConfiguration constructConfiguration() {
+		AutofetchConfiguration configuration = new AutofetchConfiguration();
+		//.setProperty(Environment.CACHE_REGION_FACTORY, CachingRegionFactory.class.getName()  )
+		configuration.setProperty( AvailableSettings.USE_NEW_ID_GENERATOR_MAPPINGS, "true" );
+		if ( createSchema() ) {
+			configuration.setProperty( Environment.HBM2DDL_AUTO, "create-drop" );
+			final String secondSchemaName = createSecondSchema();
+			if ( StringHelper.isNotEmpty( secondSchemaName ) ) {
+				if ( !( getDialect() instanceof H2Dialect ) ) {
+					throw new UnsupportedOperationException( "Only H2 dialect supports creation of second schema." );
+				}
+				Helper.createH2Schema( secondSchemaName, configuration );
+			}
+		}
+		configuration.setProperty( Environment.DIALECT, getDialect().getClass().getName() );
+		return configuration;
+	}
+	@Override
+	protected StandardServiceRegistryImpl buildServiceRegistry(BootstrapServiceRegistry bootRegistry, Configuration configuration) {
+		Properties properties = new Properties();
+		properties.putAll( configuration.getProperties() );
+		Environment.verifyProperties( properties );
+		ConfigurationHelper.resolvePlaceHolders( properties );
+
+		em = new ExtentManager();
+
+		StandardServiceRegistryBuilder registryBuilder = new StandardServiceRegistryBuilder( bootRegistry ).applySettings( properties );
+		prepareBasicRegistryBuilder( registryBuilder );
+		return (StandardServiceRegistryImpl) registryBuilder.build();
+	}
+	@Override
+	protected BootstrapServiceRegistry buildBootstrapServiceRegistry() {
+		final BootstrapServiceRegistryBuilder builder = new BootstrapServiceRegistryBuilder().with(new AutofetchIntegrator());
+		prepareBootstrapRegistryBuilder( builder );
+		return builder.build();
+	}
+	@Override
+	protected Session openSession() throws HibernateException {
+		session = sf.openSession();
+		return session;
+	}
+
+	@Override
+	protected void buildSessionFactory() {
+		// for now, build the configuration to get all the property settings
+		cfg = constructAndConfigureConfiguration();
+
+		BootstrapServiceRegistry bootRegistry = buildBootstrapServiceRegistry();
+		registry = buildServiceRegistry(bootRegistry, cfg);
+		isMetadataUsed = registry.getService(ConfigurationService.class).getSetting(USE_NEW_METADATA_MAPPINGS,
+				new ConfigurationService.Converter<Boolean>() {
+					@Override
+					public Boolean convert(Object value) {
+						return Boolean.parseBoolean((String) value);
+					}
+				}, false);
+		if (isMetadataUsed) {
+			MetadataImplementor metadataImplementor = buildMetadata(bootRegistry, registry);
+			afterConstructAndConfigureMetadata(metadataImplementor);
+			sf = (SessionFactoryImplementor) metadataImplementor.buildSessionFactory();
+		} else {
+			// this is done here because Configuration does not currently support 4.0 xsd
+			afterConstructAndConfigureConfiguration(cfg);
+			sf = (SessionFactoryImplementor) cfg.buildSessionFactory(registry, em);
+		}
+		afterSessionFactoryBuilt();
+	}
+
+	private MetadataImplementor buildMetadata(BootstrapServiceRegistry bootRegistry,
+			StandardServiceRegistryImpl serviceRegistry) {
+		MetadataSources sources = new MetadataSources(bootRegistry);
+		addMappings(sources);
+		return (MetadataImplementor) sources.getMetadataBuilder(serviceRegistry).build();
+	}
+
+	private void afterConstructAndConfigureConfiguration(AutofetchConfiguration cfg) {
+		addMappings(cfg);
+		cfg.buildMappings();
+		applyCacheSettings(cfg);
+		afterConfigurationBuilt(cfg);
+	}
+
 
     @Override
     protected Class<?>[] getAnnotatedClasses() {
@@ -793,6 +914,6 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
     @Override
     protected void afterSessionFactoryBuilt() {
-        this.em = serviceRegistry().getService(AutofetchService.class).getExtentManager();
+        this.em = registry.getService(AutofetchService.class).getExtentManager();
     }
 }
