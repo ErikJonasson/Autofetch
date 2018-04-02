@@ -417,6 +417,14 @@ public class AutofetchConfiguration extends Configuration {
     public ExtentManager getExtentManager() {
         return extentManager;
     }
+    
+	@SuppressWarnings("unchecked")
+	@Override
+	public Configuration addAnnotatedClass(Class annotatedClass) {
+		XClass xClass = manager.toXClass( annotatedClass );
+		metadataSourceQueue.add( xClass );
+		return this;
+	}
 
     protected class MetadataSourceQueue implements Serializable {
 
