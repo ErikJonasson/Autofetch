@@ -226,15 +226,15 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         addressAccess();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 0, "mentor");
-        checkStatistics(tp, 1, 0, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 0, "m_mentor");
+        checkStatistics(tp, 1, 0, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         Assert.assertEquals("The number of sub-extents is not 5", 4, tp.numSubProfiles());
-        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("supervisor").isEmpty());
-        Assert.assertTrue("Subordinates extent should be empty", tp.getSubProfile("subordinates").isEmpty());
-        Assert.assertTrue("Friends extent should be empty", tp.getSubProfile("friends").isEmpty());
+        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("m_supervisor").isEmpty());
+        Assert.assertTrue("Subordinates extent should be empty", tp.getSubProfile("m_subordinates").isEmpty());
+        Assert.assertTrue("Friends extent should be empty", tp.getSubProfile("m_friends").isEmpty());
     }
 
     /**
@@ -251,15 +251,15 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
     private void checkFriendAccess() {
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 0, "mentor");
-        checkStatistics(tp, 1, 0, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 1, "friends");
+        checkStatistics(tp, 1, 0, "m_mentor");
+        checkStatistics(tp, 1, 0, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 1, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("friends"), "mentor", "supervisor", "subordinates");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_friends"), "m_mentor", "m_supervisor", "m_subordinates");
 
-        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("supervisor").isEmpty());
-        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("subordinates").isEmpty());
+        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("m_supervisor").isEmpty());
+        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("m_subordinates").isEmpty());
     }
 
     /**
@@ -272,10 +272,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         secondLevelSupervisorAccess();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 0, "mentor");
-        checkStatistics(tp, 1, 1, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 0, "m_mentor");
+        checkStatistics(tp, 1, 1, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatistics(tp.getSubProfile("supervisor"), 1, 0, "subordinates");
         checkStatistics(tp.getSubProfile("supervisor"), 1, 1, "supervisor");
@@ -294,10 +294,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         supervisorAndMentorAccess();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "mentor");
-        checkStatistics(tp, 1, 1, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_mentor");
+        checkStatistics(tp, 1, 1, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatistics(tp.getSubProfile("supervisor"), 1, 0, "supervisor", "subordinates");
 
@@ -314,10 +314,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         mentorAccess();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "mentor");
-        checkStatistics(tp, 1, 0, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_mentor");
+        checkStatistics(tp, 1, 0, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatistics(tp.getSubProfile("mentor"), 1, 0, "mentor", "supervisor", "subordinates");
 
@@ -334,10 +334,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         mentorAccess();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "mentor");
-        checkStatistics(tp, 1, 0, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_mentor");
+        checkStatistics(tp, 1, 0, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatistics(tp.getSubProfile("mentor"), 1, 0, "mentor", "supervisor", "subordinates");
 
@@ -356,10 +356,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         mentorAccessProxy();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "mentor");
-        checkStatistics(tp, 1, 0, "supervisor");
-        checkStatistics(tp, 1, 0, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_mentor");
+        checkStatistics(tp, 1, 0, "m_supervisor");
+        checkStatistics(tp, 1, 0, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatistics(tp.getSubProfile("mentor"), 1, 0, "mentor", "supervisor", "subordinates");
 
@@ -377,10 +377,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         collectionAccess1();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("subordinates"), "mentor", "supervisor", "subordinates");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_mentor", "m_supervisor", "m_subordinates");
     }
 
     /**
@@ -393,8 +393,8 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         collectionAccess2();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatisticsNotAccessed(tp.getSubProfile("subordinates"), "supervisor", "subordinates");
 
@@ -411,8 +411,8 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         collectionAccess3();
 
         TraversalProfile tp = em.getFirstProfile();
-        checkStatistics(tp, 1, 1, "subordinates");
-        checkStatistics(tp, 1, 0, "friends");
+        checkStatistics(tp, 1, 1, "m_subordinates");
+        checkStatistics(tp, 1, 0, "m_friends");
 
         checkStatisticsNotAccessed(tp.getSubProfile("subordinates"), "supervisor", "mentor");
 
@@ -454,6 +454,8 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             sess = openSession();
             tx = sess.beginTransaction();
             Employee grandfather = (Employee) sess.load(Employee.class, grandfatherId);
+            //grandfather.getSubordinates();
+//            Set<Employee> kids = (Employee) sess.load(Employee.class, grandfatherId);
             Assert.assertEquals("Checking size of subordinates collection", NUM_SUBORDINATES, grandfather.getSubordinates().size());
             for (Employee child : grandfather.getSubordinates()) {
                 child.getName();
@@ -523,6 +525,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             Employee dave = (Employee) sess.load(Employee.class, daveId);
             dave.getAddress().getStreet();
             dave.getAddress().getCity(); // Second access shouldn't make a difference
+            dave.getSubordinates();
             tx.commit();
             tx = null;
         } finally {

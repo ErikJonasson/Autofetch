@@ -39,7 +39,6 @@ public class EntityTracker implements Serializable {
         this.extentManager = extentManager;
     }
 
-    //Set flag and count how many times the entity has been accessed.  Calls extendProfile which adds it to another TP
     public void trackAccess(Object entity) throws Throwable {
         if (tracking && !accessed) {
             this.accessed = true;
@@ -54,7 +53,6 @@ public class EntityTracker implements Serializable {
         trackers.remove(tracker);
     }
 
-    // Get the property value, if its trackable call private method extendTracker (which returns subgraph-tracker) and add that tracker to this entity
     public void extendProfile(Statistics tracker, Object entity) {
         for (Property prop : persistentProperties) {
             Object propVal = null;
@@ -81,14 +79,16 @@ public class EntityTracker implements Serializable {
 
     private static final Object[] NO_OBJECTS = new Object[0];
 
-    private Object getPropertyValue(String propName, Object o) { // This is vague
+    private Object getPropertyValue(String propName, Object o) {
         // Construct method name using the property name and
         // convention for getters
         // Uppercase first letter of prop
         StringBuilder propCapitalized = new StringBuilder(propName);
-        char firstLetter = Character.toUpperCase(propCapitalized.charAt(0));
-        propCapitalized.setCharAt(0, firstLetter);
-        String methodName = "get" + propCapitalized;
+
+        String str = propCapitalized.toString().substring(propCapitalized.indexOf("_") + 1);
+        StringBuilder buildString = new StringBuilder(str);
+        String result = buildString.substring(0,1).toUpperCase() + buildString.substring(1);
+        String methodName = "get" + result;
         try {
             Method m = o.getClass().getMethod(methodName, NO_CLASSSES);
             if (!m.isAccessible()) {
@@ -107,7 +107,7 @@ public class EntityTracker implements Serializable {
      * @param collection
      * @return null if traversal profile could not be extended
      */
-    //Get parentnode, if it doesnt have any subprofiles and cant add subprofile, return null. Otherwise return new, extended tracker
+
     private Statistics extendTracker(Statistics tracker, String assoc, boolean collection) {
         TraversalProfile parentNode = tracker.getProfileNode();
         if (!parentNode.hasSubProfile(assoc)) {

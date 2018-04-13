@@ -48,7 +48,6 @@ public class Statistics implements Serializable {
      * @param amt
      */
 	 
-	 //What is this doing?
     public synchronized void incrementTotal(int amt) { // this should be possible to do more elegantly
         // Protect against overflow, a little bit of a hack because
         // we are arbitrarily discounting statistics when

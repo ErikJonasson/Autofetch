@@ -15,7 +15,6 @@
  */
 package org.autofetch.hibernate;
 
-//Used in AutofetchProxyFactory
 public interface TrackableEntity extends Trackable {
     
     void extendProfile(Statistics tracker);

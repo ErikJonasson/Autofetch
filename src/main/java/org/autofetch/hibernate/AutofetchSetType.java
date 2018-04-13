@@ -14,11 +14,17 @@
 package org.autofetch.hibernate;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+
+import org.hibernate.HibernateException;
+import org.hibernate.collection.internal.PersistentSet;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
-import org.hibernate.type.SetType;
-import org.hibernate.type.TypeFactory.TypeScope;
+import org.hibernate.usertype.UserCollectionType;
 
 /**
  * Based on org.hibernate.type.SetType
@@ -26,30 +32,62 @@ import org.hibernate.type.TypeFactory.TypeScope;
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  * 
  */
-public class AutofetchSetType extends SetType {
+public class AutofetchSetType implements UserCollectionType {
 
-    public AutofetchSetType(TypeScope typeScope, String role, String propertyRef) {
-        super(typeScope, role, propertyRef);
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 
-    }
-    @Override
+
+	public AutofetchSetType() {
+		
+	}
+	
+	@Override
+	public Object instantiate(int anticipatedSize) {
+		return anticipatedSize <= 0
+		       ? new HashSet()
+		       : new HashSet( anticipatedSize + (int)( anticipatedSize * .75f ), .75f );
+	}
+	
     public PersistentCollection instantiate(SessionImplementor session,
             CollectionPersister persister, Serializable key) {
-//        if (session.getEntityMode() == EntityMode.DOM4J) {
-//            return new PersistentElementHolder(session, persister, key);
-//        } else {
             return new AutofetchSet(session);
-//        }
     }
 
     @Override
     public PersistentCollection wrap(SessionImplementor session,
             Object collection) {
-//        if (session.getEntityMode() == EntityMode.DOM4J) {
-//            return new PersistentElementHolder(session, (Element) collection);
-//        } else {
             return new AutofetchSet(session, (java.util.Set) collection);
-//        }
     }
+    
+    @Override
+    public Iterator getElementsIterator(Object collection) {
+            return ((PersistentSet)collection).iterator();
+    }
+    
+	@Override
+	public PersistentCollection instantiate(SessionImplementor session, CollectionPersister persister)
+			throws HibernateException {
+		return new AutofetchSet(session);
+	}
+	
+	@Override
+	public boolean contains(Object collection, Object entity) {
+		return ((PersistentSet) collection).contains(entity);
+	}
+	
+	@Override
+	public Object replaceElements(Object original, Object target, CollectionPersister persister, Object owner,
+			Map copyCache, SessionImplementor session) throws HibernateException {
+		((PersistentSet) target).clear();
+		((PersistentSet) target).addAll((Collection<?>) original);
+		return target;
+	}
 
+	@Override
+	public Object indexOf(Object collection, Object entity) {
+		throw new UnsupportedOperationException();
+	}
 }

@@ -2532,7 +2532,7 @@ public final class AutofetchHbmBinder {
      *
      * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
      */
-    private static class Set extends org.hibernate.mapping.Set {
+    static class Set extends org.hibernate.mapping.Set {
 
         /**
          * Constructor for Set.
@@ -2551,10 +2551,8 @@ public final class AutofetchHbmBinder {
             } else if (hasOrder()) {
                 return getMappings().getTypeResolver().getTypeFactory().orderedSet(getRole(),
                         getReferencedPropertyName());
-            } else {
-                return new AutofetchSetType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
-                        getReferencedPropertyName()), getRole(), getReferencedPropertyName());
-            }
+            } 
+            return null;
         }
     }
 
@@ -2575,11 +2573,11 @@ public final class AutofetchHbmBinder {
             super(mappings, owner);
         }
 
-        @Override
-        public org.hibernate.type.CollectionType getDefaultCollectionType() {
-            return new AutofetchListType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
-                    getReferencedPropertyName()), getRole(), getReferencedPropertyName());
-        }
+//        @Override
+//        public org.hibernate.type.CollectionType getDefaultCollectionType() {
+//            return new AutofetchListType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
+//                    getReferencedPropertyName()), getRole(), getReferencedPropertyName());
+//        }
     }
 
     /**
@@ -2599,11 +2597,11 @@ public final class AutofetchHbmBinder {
             super(mappings, owner);
         }
 
-        @Override
-        public org.hibernate.type.CollectionType getDefaultCollectionType() {
-            return new AutofetchBagType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
-                    getReferencedPropertyName()), getRole(), getReferencedPropertyName());
-        }
+//        @Override
+//        public org.hibernate.type.CollectionType getDefaultCollectionType() {
+//            return new AutofetchBagType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
+//                    getReferencedPropertyName()), getRole(), getReferencedPropertyName());
+//        }
     }
 
     /**
@@ -2623,11 +2621,11 @@ public final class AutofetchHbmBinder {
             super(mappings, owner);
         }
 
-        @Override
-        public org.hibernate.type.CollectionType getDefaultCollectionType() {
-            return new AutofetchIdBagType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
-                    getReferencedPropertyName()), getRole(), getReferencedPropertyName());
-        }
+//        @Override
+//        public org.hibernate.type.CollectionType getDefaultCollectionType() {
+//            return new AutofetchIdBagType((TypeScope) getMappings().getTypeResolver().getTypeFactory().list(getRole(),
+//                getReferencedPropertyName()), getRole(), getReferencedPropertyName());
+//        }
     }
 
     // This inner class implements a case statement....perhaps im being a bit

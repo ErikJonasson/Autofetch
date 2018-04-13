@@ -24,7 +24,7 @@ import java.util.List;
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
-//Used in extentmanager to
+
 public class Path implements Serializable {
 
     private List<String> traversals;
@@ -35,7 +35,7 @@ public class Path implements Serializable {
     }
 
     public Path(List<String> traversals) {
-        super(); //NOT NEEDED?
+        super();
         this.traversals = traversals;
     }
 
@@ -61,7 +61,7 @@ public class Path implements Serializable {
     }
 
     public List<String> traversals() {
-        return Collections.unmodifiableList(traversals); // Does this exist anymore?
+        return Collections.unmodifiableList(traversals);
     }
 
     public Path removeLastTraversal() {

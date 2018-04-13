@@ -48,7 +48,6 @@ public class AutofetchLazyInitializer extends BasicLazyInitializer implements Me
 
     private boolean constructed;
 
-    // Check whether the last paremeter, set to false for now
     private AutofetchLazyInitializer(String entityName,
                                      Class persistentClass,
                                      Class[] interfaces,
@@ -81,7 +80,6 @@ public class AutofetchLazyInitializer extends BasicLazyInitializer implements Me
             }
 
             if (result == INVOKE_IMPLEMENTATION) {
-                // Handle methods for tracking
                 if (args.length == 0) {
                     switch (thisMethod.getName()) {
                         case "enableTracking":

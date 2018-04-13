@@ -4,6 +4,7 @@
 package org.autofetch.test;
 
 import org.autofetch.hibernate.AutofetchTuplizer;
+import org.hibernate.annotations.CollectionType;
 import org.hibernate.annotations.Tuplizer;
 
 import javax.persistence.CascadeType;
@@ -35,11 +36,12 @@ public class Employee {
 
     @Column(name = "name")
     private String m_name;
-
+    
     @JoinColumn(name = "supervisor_id")
     @ManyToOne(cascade = {CascadeType.ALL})
     private Employee m_supervisor;
 
+    @CollectionType(type="org.autofetch.hibernate.AutofetchSetType")
     @JoinColumn(name = "supervisor_id")
     @OneToMany(cascade = {CascadeType.ALL})
     private Set<Employee> m_subordinates;
@@ -51,6 +53,7 @@ public class Employee {
     @ManyToOne(cascade = {CascadeType.ALL})
     private Employee m_mentor;
 
+    @CollectionType(type="org.autofetch.hibernate.AutofetchSetType")
     @ManyToMany(cascade = {CascadeType.ALL})
     @JoinTable(name = "friends", joinColumns = {@JoinColumn(name = "friend_id")}, inverseJoinColumns = {@JoinColumn(name = "befriended_id")})
     private Set<Employee> m_friends;

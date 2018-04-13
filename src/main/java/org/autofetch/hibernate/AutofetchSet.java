@@ -15,6 +15,7 @@ package org.autofetch.hibernate;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 import org.autofetch.hibernate.CollectionTracker;
@@ -22,6 +23,7 @@ import org.autofetch.hibernate.Statistics;
 import org.autofetch.hibernate.Trackable;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.collection.internal.PersistentSet;
+
 /**
  * Based on org.hibernate.collection.PersistentSet
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
@@ -43,7 +45,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     public AutofetchSet(SessionImplementor si) {
         super(si);
     }
-
+    
     public void addTracker(Statistics tracker) {
         collectionTracker.addTracker(tracker);
     }
@@ -274,3 +276,5 @@ public class AutofetchSet extends PersistentSet implements Trackable {
         return collectionTracker.isAccessed();
     }
 }
+
+

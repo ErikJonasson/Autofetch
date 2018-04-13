@@ -42,10 +42,8 @@ public class TraversalProfile implements Serializable {
         }
     }
 
-    // Map from field name to traversal profile link
     private Map<String, TraversalProfileLink> subProfiles;
 
-    // Parent extent, null if top level
     private TraversalProfile parent;
 
     private int level;
@@ -117,7 +115,6 @@ public class TraversalProfile implements Serializable {
      *             sub-profile cannot be created because it would be too deep.
      */
 	 
-	 //Adds a new entry to the map with the assoc as key and a TraversalProfileLink as value
     protected TraversalProfile addSubProfile(String assoc, boolean collection) {
         TraversalProfile subProfile = new TraversalProfile(this);
         subProfiles

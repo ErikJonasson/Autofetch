@@ -27,10 +27,6 @@ public class CollectionTracker implements Serializable {
 
     private boolean tracking = true;
 
-    /*
-    If this gets called when tracking is activated, set accessed and increment accessed in each of the trackers. For each trackable entity, call extendProfile
-    Used in AutofetchSet, AutofetchBag, AutofetchIdBag, AutofetchList
-    */
     public void trackAccess(Collection collection) {
         if (!accessed && tracking) {
             accessed = true;
