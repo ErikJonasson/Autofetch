@@ -246,7 +246,6 @@ public class AutofetchSet extends PersistentSet implements Trackable {
 
     @Override
     public String toString() {
-        //if (needLoading) return "asleep";
         String ret = super.toString();
         if (wasInitialized()) {
             accessed();

@@ -24,15 +24,12 @@ public class EntityProxyMethodHandler implements MethodHandler, Serializable {
 
     private final EntityTracker entityTracker;
 
-    // Class used in mainly EntityProxyFactory, also used in the hibernate package
     public EntityProxyMethodHandler(Set<Property> persistentProperties, ExtentManager extentManager) {
         this.entityTracker = new EntityTracker(persistentProperties, extentManager);
     }
 
     @Override
     public Object invoke(Object obj, Method thisMethod, Method proceed, Object[] args) throws Throwable {
-        // Handle methods for toggling tracking and setting usage statistics
-        // Handle different input for tracking settings
         if (args.length == 0) {
             if (thisMethod.getName().equals("disableTracking")) {
                 boolean oldValue = entityTracker.isTracking();

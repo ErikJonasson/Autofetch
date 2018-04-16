@@ -33,12 +33,10 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.metamodel.MetadataSources;
 import org.hibernate.metamodel.source.MetadataImplementor;
-import org.hibernate.service.ServiceRegistry;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.hibernate.testing.junit4.Helper;
 import org.junit.Assert;
 import org.junit.Test;
-
 import java.util.Iterator;
 import java.util.Properties;
 
@@ -396,9 +394,9 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 1, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("subordinates"), "supervisor", "subordinates");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_supervisor", "m_subordinates");
 
-        checkStatisticsAccessed(tp.getSubProfile("subordinates"), "mentor");
+        checkStatisticsAccessed(tp.getSubProfile("m_subordinates"), "m_mentor");
     }
 
     /**
@@ -414,9 +412,9 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 1, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("subordinates"), "supervisor", "mentor");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_supervisor", "m_mentor");
 
-        checkStatisticsAccessed(tp.getSubProfile("subordinates"), "subordinates");
+        checkStatisticsAccessed(tp.getSubProfile("m_subordinates"), "m_subordinates");
     }
 
     private void checkStatistics(TraversalProfile tp, int total, int accesses, String... propNames) {
@@ -454,8 +452,6 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             sess = openSession();
             tx = sess.beginTransaction();
             Employee grandfather = (Employee) sess.load(Employee.class, grandfatherId);
-            //grandfather.getSubordinates();
-//            Set<Employee> kids = (Employee) sess.load(Employee.class, grandfatherId);
             Assert.assertEquals("Checking size of subordinates collection", NUM_SUBORDINATES, grandfather.getSubordinates().size());
             for (Employee child : grandfather.getSubordinates()) {
                 child.getName();
@@ -525,7 +521,6 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             Employee dave = (Employee) sess.load(Employee.class, daveId);
             dave.getAddress().getStreet();
             dave.getAddress().getCity(); // Second access shouldn't make a difference
-            dave.getSubordinates();
             tx.commit();
             tx = null;
         } finally {

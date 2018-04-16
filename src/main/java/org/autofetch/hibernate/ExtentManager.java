@@ -29,7 +29,7 @@ public class ExtentManager implements Serializable {
 
     private static final Log log = LogFactory.getLog(ExtentManager.class);
 
-    // Map from QueryProgramStatePair to QueryExtent
+
     private ConcurrentMap<QueryProgramStatePair, TraversalProfile> tpMap = new ConcurrentHashMap<>();
 
     // Used for debugging
@@ -47,7 +47,6 @@ public class ExtentManager implements Serializable {
 
     private int maxPrefetchDepth = DEFAULT_MAX_PREFETCH_DEPTH;
 
-    // Check if maxPrefetch depth is being exceeded, if not create a subprofile for that parentnode. (call to TP)
     public boolean addSubProfile(TraversalProfile parentNode, String assoc, boolean collection) {
         if (parentNode.getLevel() >= maxPrefetchDepth) {
             return false;
@@ -57,7 +56,6 @@ public class ExtentManager implements Serializable {
         }
     }
 
-    //Mark as root based on queryId, if the entity is trackable, and if it was already accessed call extendProfile, if not just add the tracker to that entity.
     public void markAsRoot(Object o, String queryId) {
         TraversalProfile tp = getTraversalProfile(queryId);
         if (o instanceof TrackableEntity) {
@@ -120,7 +118,7 @@ public class ExtentManager implements Serializable {
 
     private void getPrefetchPaths(TraversalProfile tp, Path prefix, List<Path> paths, double parentProbability,
                                   boolean collAssocBanned) {
-        // What is prefix in this case?
+
         if (prefix.size() > maxPrefetchDepth) {
             return;
         }
@@ -136,7 +134,7 @@ public class ExtentManager implements Serializable {
 
             double localAccessPercentage = (double) accessed / (double) total;
             double accessPercentage = localAccessPercentage * parentProbability;
-            if (accessPercentage > fetchParam) {                    // This part is vague, what happens if it is an collection? When is it "banned"?
+            if (accessPercentage > fetchParam) {                    
                 boolean wasCollAssocBanned = collAssocBanned;
                 collAssocBanned = collAssocBanned || collection;
                 Path newPath = prefix.addTraversal(assoc);

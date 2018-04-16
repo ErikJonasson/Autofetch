@@ -19,7 +19,6 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 
-//Used as an attribute in EntityProxyMethodHandler get access to the accessed valies
 public class EntityTracker implements Serializable {
 
     private boolean accessed = false;
