@@ -82,6 +82,7 @@ public class ExtentManager implements Serializable {
             log.debug("Clearing extent information.");
         }
         tpMap.clear();
+        firstProfile = null;
     }
 
     /**
@@ -244,6 +245,10 @@ public class ExtentManager implements Serializable {
 
     public void setFetchParam(double fetchParam) {
         this.fetchParam = fetchParam;
+    }
+    
+    public void setFirstProfile(TraversalProfile tp) {
+    	this.firstProfile = tp;
     }
 
     public TraversalProfile getFirstProfile() {
