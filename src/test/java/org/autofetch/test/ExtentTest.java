@@ -213,6 +213,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         dave.getSupervisor().getSubordinates().size();
         dave.getSubordinates().iterator().next().getSubordinates().size();
     }
+    
 
     /**
      * Test accessing address and checking extent statistics. Since address is a component, there should be not sub-extent for it.
@@ -317,10 +318,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 0, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatistics(tp.getSubProfile("mentor"), 1, 0, "mentor", "supervisor", "subordinates");
+        checkStatistics(tp.getSubProfile("m_mentor"), 1, 0, "m_mentor", "m_supervisor", "m_subordinates");
 
-        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("supervisor").isEmpty());
-        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("subordinates").isEmpty());
+        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("m_supervisor").isEmpty());
+        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("m_subordinates").isEmpty());
     }
 
     /**
@@ -337,10 +338,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 0, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatistics(tp.getSubProfile("mentor"), 1, 0, "mentor", "supervisor", "subordinates");
+        checkStatistics(tp.getSubProfile("m_mentor"), 1, 0, "m_mentor", "m_supervisor", "m_subordinates");
 
-        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("supervisor").isEmpty());
-        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("subordinates").isEmpty());
+        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("m_supervisor").isEmpty());
+        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("m_subordinates").isEmpty());
     }
 
     /**
@@ -359,10 +360,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 0, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatistics(tp.getSubProfile("mentor"), 1, 0, "mentor", "supervisor", "subordinates");
+        checkStatistics(tp.getSubProfile("m_mentor"), 1, 0, "m_mentor", "m_supervisor", "m_subordinates");
 
-        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("supervisor").isEmpty());
-        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("subordinates").isEmpty());
+        Assert.assertTrue("Supervisor extent should be empty", tp.getSubProfile("m_supervisor").isEmpty());
+        Assert.assertTrue("Subordinate extent should be empty", tp.getSubProfile("m_subordinates").isEmpty());
     }
 
     /**
@@ -378,7 +379,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 1, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_mentor", "m_supervisor", "m_subordinates");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_mentor", "m_subordinates");
     }
 
     /**
@@ -394,7 +395,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 1, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_supervisor", "m_subordinates");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_subordinates");
 
         checkStatisticsAccessed(tp.getSubProfile("m_subordinates"), "m_mentor");
     }
@@ -412,7 +413,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         checkStatistics(tp, 1, 1, "m_subordinates");
         checkStatistics(tp, 1, 0, "m_friends");
 
-        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_supervisor", "m_mentor");
+        checkStatisticsNotAccessed(tp.getSubProfile("m_subordinates"), "m_mentor");
 
         checkStatisticsAccessed(tp.getSubProfile("m_subordinates"), "m_subordinates");
     }
