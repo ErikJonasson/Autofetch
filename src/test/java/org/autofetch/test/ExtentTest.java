@@ -91,6 +91,24 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             }
         }
     }
+    
+    @Test
+    public void test() {
+    	em.clearExtentInformation();
+    	
+    	Long daveId = createObjectGraph(true);
+    	
+        Session sess  = openSession();
+        Transaction tx = null;
+        tx = sess.beginTransaction();
+        Employee dave = (Employee) sess.load(Employee.class, daveId);
+        tx.commit();
+        dave.getName();
+        session.close();
+        hashCode();
+    }
+
+    	
 
     /**
      * Test to show correct fetch profile is generated and executed.
@@ -100,10 +118,8 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         em.clearExtentInformation();
 
         // Execute query multiple times
-        Employee dave = null;
-        for (int i = 0; i < 2; i++) {
-            dave = someAccess(i == 0);
-        }
+//        someAccess(true);
+        Employee dave = someAccess(true);
 
         // These all should not throw lazy instantiation exception, because
         // they should have been fetch eagerly
@@ -580,7 +596,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             sess = openSession();
             tx = sess.beginTransaction();
             Employee dave = (Employee) sess.load(Employee.class, daveId);
-            dave.getSupervisor().getName();
+            dave.getSupervisor();
             dave.getSupervisor().getSupervisor().getName();
             tx.commit();
             tx = null;
@@ -610,6 +626,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
         }
     }
 
+
     private Employee someAccess(boolean traverse) {
         Session sess;
         Transaction tx = null;
@@ -632,6 +649,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
             if (tx != null) {
                 tx.rollback();
             }
+            session.close();
         }
     }
 
@@ -663,6 +681,33 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
     }
 
     private Employee initializeCollectionAccess(boolean traverse) {
+        Session sess;
+        Transaction tx = null;
+        Long daveId = createObjectGraph(false);
+        try {
+            sess = openSession();
+            tx = sess.beginTransaction();
+            Query q = sess.createQuery("from Employee e where e.id = :id");
+            q.setParameter("id", daveId);
+            Employee dave = (Employee) q.uniqueResult();
+            dave.getName();
+            dave.getSubordinates().size();
+            if (traverse) {
+                for (Employee employee : dave.getSubordinates()) {
+                    employee.getSubordinates().size();
+                }
+            }
+            tx.commit();
+            tx = null;
+            return dave;
+        } finally {
+            if (tx != null) {
+                tx.rollback();
+            }
+        }
+    }
+    
+    private Employee initializeCollectionAccess2(boolean traverse) {
         Session sess;
         Transaction tx = null;
         Long daveId = createObjectGraph(false);
