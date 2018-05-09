@@ -91,7 +91,6 @@ public class AutofetchConfiguration extends Configuration {
             Configuration.class.getName());
     private boolean isDefaultProcessed = false;
     private ExtentManager extentManager;
-    private EventListenerRegistry eventListenerRegistry;
     private SessionFactory sessionFactory;
     private ReflectionManager manager;
     private MetadataSourceQueue metadataSourceQueue = new MetadataSourceQueue();
@@ -106,10 +105,19 @@ public class AutofetchConfiguration extends Configuration {
         super(arg0);
         reset();
     }
-
+    
     public SessionFactory buildSessionFactory(ServiceRegistry serviceRegistry, ExtentManager extentManager)
             throws HibernateException {
         this.extentManager = extentManager;
+        sessionFactory = super.buildSessionFactory(serviceRegistry);
+        manager = getReflectionManager();
+        return sessionFactory;
+    }
+
+    public SessionFactory buildSessionFactory(ServiceRegistry serviceRegistry, ExtentManager extentManager, String propertyName)
+            throws HibernateException {
+        this.extentManager = extentManager;
+        configure(propertyName);
         sessionFactory = super.buildSessionFactory(serviceRegistry);
         manager = getReflectionManager();
         return sessionFactory;
