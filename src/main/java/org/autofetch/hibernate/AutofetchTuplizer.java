@@ -26,6 +26,7 @@ import org.hibernate.proxy.ProxyFactory;
 import org.hibernate.tuple.Instantiator;
 import org.hibernate.tuple.entity.EntityMetamodel;
 import org.hibernate.tuple.entity.PojoEntityTuplizer;
+import org.hibernate.type.ComponentType;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -38,51 +39,12 @@ import java.util.Map;
  */
 public class AutofetchTuplizer extends PojoEntityTuplizer {
 
-    private final ReflectionOptimizer optimizer;
-
     public AutofetchTuplizer(EntityMetamodel entityMetamodel, PersistentClass mappedEntity) {
         super(entityMetamodel, mappedEntity);
-
-        Class<?> mappedClass = mappedEntity.getMappedClass();
-
-        String[] getterNames = new String[propertySpan];
-        String[] setterNames = new String[propertySpan];
-        Class[] propTypes = new Class[propertySpan];
-        for (int i = 0; i < propertySpan; i++) {
-            getterNames[i] = getters[i].getMethodName();
-            setterNames[i] = setters[i].getMethodName();
-            propTypes[i] = getters[i].getReturnType();
-        }
-
-        if (hasCustomAccessors || !Environment.useReflectionOptimizer()) {
-            optimizer = null;
-        } else {
-            optimizer = Environment.getBytecodeProvider().getReflectionOptimizer(
-                    mappedClass, getterNames, setterNames, propTypes
-            );
-        }
     }
 
     public AutofetchTuplizer(EntityMetamodel entityMetamodel, EntityBinding mappedEntity) {
         super(entityMetamodel, mappedEntity);
-        Class<?> mappedClass = mappedEntity.getEntity().getClassReference();
-
-        String[] getterNames = new String[propertySpan];
-        String[] setterNames = new String[propertySpan];
-        Class[] propTypes = new Class[propertySpan];
-        for (int i = 0; i < propertySpan; i++) {
-            getterNames[i] = getters[i].getMethodName();
-            setterNames[i] = setters[i].getMethodName();
-            propTypes[i] = getters[i].getReturnType();
-        }
-
-        if (hasCustomAccessors || !Environment.useReflectionOptimizer()) {
-            optimizer = null;
-        } else {
-            optimizer = Environment.getBytecodeProvider().getReflectionOptimizer(
-                    mappedClass, getterNames, setterNames, propTypes
-            );
-        }
     }
 
     @Override
@@ -90,11 +52,13 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
         final AutofetchService autofetchService = getFactory().getServiceRegistry().getService(AutofetchService.class);
         final ExtentManager extentManager = autofetchService.getExtentManager();
 
-        if (this.optimizer != null) {
-            return new AutofetchInstantiator(pc, this.optimizer.getInstantiationOptimizer(), extentManager);
-        }
+        final ReflectionOptimizer optimizer = this.getOptimizer(pc.getMappedClass());
 
-        return new AutofetchInstantiator(pc, null, extentManager);
+        return new AutofetchInstantiator(
+                pc,
+                optimizer != null ? optimizer.getInstantiationOptimizer() : null,
+                extentManager
+        );
     }
 
     @Override
@@ -113,6 +77,16 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
     }
 
     @Override
+    public Serializable getIdentifier(Object entity, SessionImplementor session) {
+        boolean wasTracking = disableTracking(entity);
+        Serializable val = super.getIdentifier(entity, session);
+        if (wasTracking) {
+            enableTracking(entity);
+        }
+        return val;
+    }
+
+    @Override
     public void setIdentifier(Object entity, Serializable id) throws HibernateException {
         boolean wasTracking = disableTracking(entity);
         super.setIdentifier(entity, id);
@@ -122,89 +96,146 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
     }
 
     @Override
-    public Object[] getPropertyValues(Object arg0) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        Object[] val = super.getPropertyValues(arg0);
+    public void setIdentifier(Object entity, Serializable id, SessionImplementor session) {
+        boolean wasTracking = disableTracking(entity);
+        super.setIdentifier(entity, id, session);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
+        }
+    }
+
+    @Override
+    public Object[] getPropertyValues(Object entity) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        Object[] val = super.getPropertyValues(entity);
+        if (wasTracking) {
+            enableTracking(entity);
         }
         return val;
     }
 
     @Override
-    public Object[] getPropertyValuesToInsert(Object arg0, Map arg1, SessionImplementor arg2) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        Object[] val = super.getPropertyValuesToInsert(arg0, arg1, arg2);
+    public Object[] getPropertyValuesToInsert(Object entity, Map mergeMap, SessionImplementor session) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        Object[] val = super.getPropertyValuesToInsert(entity, mergeMap, session);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
         }
         return val;
     }
 
     @Override
-    protected Object[] getPropertyValuesWithOptimizer(Object arg0) {
-        boolean wasTracking = disableTracking(arg0);
-        Object[] val = super.getPropertyValuesWithOptimizer(arg0);
+    protected Object[] getPropertyValuesWithOptimizer(Object object) {
+        boolean wasTracking = disableTracking(object);
+        Object[] val = super.getPropertyValuesWithOptimizer(object);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(object);
         }
         return val;
     }
 
     @Override
-    public void setPropertyValues(Object arg0, Object[] arg1) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        super.setPropertyValues(arg0, arg1);
+    public void setPropertyValues(Object entity, Object[] values) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        super.setPropertyValues(entity, values);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
         }
     }
 
     @Override
-    protected void setPropertyValuesWithOptimizer(Object arg0, Object[] arg1) {
-        boolean wasTracking = disableTracking(arg0);
-        super.setPropertyValuesWithOptimizer(arg0, arg1);
+    protected void setPropertyValuesWithOptimizer(Object object, Object[] values) {
+        boolean wasTracking = disableTracking(object);
+        super.setPropertyValuesWithOptimizer(object, values);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(object);
         }
     }
 
     @Override
-    public Object getPropertyValue(Object arg0, int arg1) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        Object val = super.getPropertyValue(arg0, arg1);
+    public Object getPropertyValue(Object entity, int i) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        Object val = super.getPropertyValue(entity, i);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
         }
         return val;
     }
 
     @Override
-    public Object getPropertyValue(Object arg0, String arg1) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        Object val = super.getPropertyValue(arg0, arg1);
+    public Object getPropertyValue(Object entity, String propertyPath) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        Object val = super.getPropertyValue(entity, propertyPath);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
         }
         return val;
     }
 
     @Override
-    public void setPropertyValue(Object arg0, int arg1, Object arg2) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        super.setPropertyValue(arg0, arg1, arg2);
+    public void setPropertyValue(Object entity, int i, Object value) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        super.setPropertyValue(entity, i, value);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
         }
     }
 
     @Override
-    public void setPropertyValue(Object arg0, String arg1, Object arg2) throws HibernateException {
-        boolean wasTracking = disableTracking(arg0);
-        super.setPropertyValue(arg0, arg1, arg2);
+    public void setPropertyValue(Object entity, String propertyName, Object value) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        super.setPropertyValue(entity, propertyName, value);
         if (wasTracking) {
-            enableTracking(arg0);
+            enableTracking(entity);
         }
+    }
+
+    @Override
+    public void resetIdentifier(Object entity, Serializable currentId, Object currentVersion) {
+        boolean wasTracking = disableTracking(entity);
+        super.resetIdentifier(entity, currentId, currentVersion);
+        if (wasTracking) {
+            enableTracking(entity);
+        }
+    }
+
+    @Override
+    public void resetIdentifier(Object entity, Serializable currentId, Object currentVersion, SessionImplementor session) {
+        boolean wasTracking = disableTracking(entity);
+        super.resetIdentifier(entity, currentId, currentVersion, session);
+        if (wasTracking) {
+            enableTracking(entity);
+        }
+    }
+
+    @Override
+    public Object getVersion(Object entity) throws HibernateException {
+        boolean wasTracking = disableTracking(entity);
+        Object version = super.getVersion(entity);
+        if (wasTracking) {
+            enableTracking(entity);
+        }
+        return version;
+    }
+
+    @Override
+    protected Object getComponentValue(ComponentType type, Object component, String propertyPath) {
+        return super.getComponentValue(type, component, propertyPath);
+    }
+
+    @Override
+    public Getter getGetter(int i) {
+        return super.getGetter(i);
+    }
+
+    @Override
+    public void afterInitialize(Object entity, boolean lazyPropertiesAreUnfetched, SessionImplementor session) {
+        super.afterInitialize(entity, lazyPropertiesAreUnfetched, session);
+    }
+
+    @Override
+    protected boolean shouldGetAllProperties(Object entity) {
+        return super.shouldGetAllProperties(entity);
     }
 
     private boolean disableTracking(Object o) {
@@ -223,5 +254,24 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
         } else {
             return false;
         }
+    }
+
+    private ReflectionOptimizer getOptimizer(Class<?> mappedClass) {
+        final String[] getterNames = new String[super.propertySpan];
+        final String[] setterNames = new String[super.propertySpan];
+        final Class[] propTypes = new Class[super.propertySpan];
+        for (int i = 0; i < super.propertySpan; i++) {
+            getterNames[i] = super.getters[i].getMethodName();
+            setterNames[i] = super.setters[i].getMethodName();
+            propTypes[i] = super.getters[i].getReturnType();
+        }
+
+        if (super.hasCustomAccessors || !Environment.useReflectionOptimizer()) {
+            return null;
+        }
+
+        return Environment.getBytecodeProvider().getReflectionOptimizer(
+                mappedClass, getterNames, setterNames, propTypes
+        );
     }
 }

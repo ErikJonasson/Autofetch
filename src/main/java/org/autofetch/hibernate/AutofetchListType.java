@@ -12,73 +12,67 @@
  */
 package org.autofetch.hibernate;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
 import org.hibernate.HibernateException;
 import org.hibernate.collection.internal.PersistentList;
-import org.hibernate.collection.internal.PersistentSet;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
-import org.hibernate.type.ListType;
-import org.hibernate.type.TypeFactory.TypeScope;
 import org.hibernate.usertype.UserCollectionType;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-
 /**
- * This class is based on org.hibernate.type.ListType.
+ * This class is based on {@link org.hibernate.type.ListType}.
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 public class AutofetchListType implements UserCollectionType {
 
-	public AutofetchListType() {
-		
-	}
-	
-    public PersistentCollection instantiate(SessionImplementor session,
-                                            CollectionPersister persister, Serializable key) {
-        return new AutofetchList(session);
-    }
-
-    @Override
-    public PersistentCollection wrap(SessionImplementor session, Object collection) {
-        return new AutofetchList(session, (java.util.List) collection);
-    }
-
 	@Override
-	public PersistentCollection instantiate(SessionImplementor session, CollectionPersister persister)
-			throws HibernateException {
-		return new AutofetchList(session);
-	}
-
-	@Override
-	public Iterator getElementsIterator(Object collection) {
-		return ((PersistentList) collection).iterator();
-	}
-
-	@Override
-	public boolean contains(Object collection, Object entity) {
-		return ((PersistentList) collection).contains(entity);
+	public PersistentCollection wrap(SessionImplementor session, Object collection) {
+		return new AutofetchList( session, cast( collection ) );
 	}
 
 	@Override
 	public Object indexOf(Object collection, Object entity) {
-		return ((PersistentList) collection).indexOf(entity);
-	}
-
-	@Override
-	public Object replaceElements(Object original, Object target, CollectionPersister persister, Object owner,
-			Map copyCache, SessionImplementor session) throws HibernateException {
-		((PersistentList) target).clear();
-		((PersistentList) target).addAll((Collection<?>) original);
-		return target;
+		return cast( collection ).indexOf( entity );
 	}
 
 	@Override
 	public Object instantiate(int anticipatedSize) {
-		return new AutofetchList();
+		return anticipatedSize <= 0 ? new ArrayList() : new ArrayList( anticipatedSize + 1 );
+	}
+
+	@Override
+	public PersistentCollection instantiate(SessionImplementor session, CollectionPersister persister)
+			throws HibernateException {
+		return new AutofetchList( session );
+	}
+
+	@Override
+	public Iterator getElementsIterator(Object collection) {
+		return ( (PersistentList) collection ).iterator();
+	}
+
+	@Override
+	public boolean contains(Object collection, Object entity) {
+		return ( (PersistentList) collection ).contains( entity );
+	}
+
+	@Override
+	public Object replaceElements(
+			Object original, Object target, CollectionPersister persister, Object owner,
+			Map copyCache, SessionImplementor session) throws HibernateException {
+		( (PersistentList) target ).clear();
+		( (PersistentList) target ).addAll( (Collection<?>) original );
+		return target;
+	}
+
+	protected List cast(Object collection) {
+		return (List) collection;
 	}
 }

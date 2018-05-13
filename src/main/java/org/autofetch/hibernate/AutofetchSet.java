@@ -1,17 +1,19 @@
 /**
  * This file is part of Autofetch.
  * Autofetch is free software: you can redistribute it and/or modify
- * it under the terms of the Lesser GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version. Autofetch is distributed in the 
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
- * PURPOSE.  See the Lesser GNU General Public License for more details. You 
- * should have received a copy of the Lesser GNU General Public License along 
+ * it under the terms of the Lesser GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. Autofetch is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the Lesser GNU General Public License for more details. You
+ * should have received a copy of the Lesser GNU General Public License along
  * with Autofetch.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 package org.autofetch.hibernate;
+
+import org.hibernate.collection.internal.PersistentSet;
+import org.hibernate.engine.spi.SessionImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -25,55 +27,66 @@ import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.collection.internal.PersistentSet;
 
 /**
- * Based on org.hibernate.collection.PersistentSet
- * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
+ * Based on {@link PersistentSet}.
  *
+ * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 @SuppressWarnings("unchecked")
 public class AutofetchSet extends PersistentSet implements Trackable {
 
-    private CollectionTracker collectionTracker = new CollectionTracker();
+    private final CollectionTracker collectionTracker = new CollectionTracker();
 
-    public AutofetchSet() {
-        super();
+    @SuppressWarnings("unused")
+    protected AutofetchSet() {
+        // Available only for serialization.
     }
 
-    public AutofetchSet(SessionImplementor si, Set s) {
-        super(si, s);
+    /**
+     * Instantiates a lazy set (the underlying set is uninitialized).
+     *
+     * @param session The session to which this set will belong.
+     */
+    public AutofetchSet(SessionImplementor session) {
+        super(session);
     }
 
-    public AutofetchSet(SessionImplementor si) {
-        super(si);
+    /**
+     * Instantiates a non-lazy set (the underlying set is constructed from the incoming set reference).
+     *
+     * @param session The session to which this set will belong.
+     * @param set     The underlying set data.
+     */
+    public AutofetchSet(SessionImplementor session, Set set) {
+        super(session, set);
     }
-    
+
+    @Override
     public void addTracker(Statistics tracker) {
-        collectionTracker.addTracker(tracker);
+        this.collectionTracker.addTracker(tracker);
     }
 
+    @Override
     public void addTrackers(Set<Statistics> trackers) {
-        collectionTracker.addTrackers(trackers);
+        this.collectionTracker.addTrackers(trackers);
     }
 
+    @Override
     public boolean disableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(false);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(false);
         return oldValue;
     }
 
+    @Override
     public boolean enableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(true);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(true);
         return oldValue;
     }
 
+    @Override
     public void removeTracker(Statistics stats) {
-        collectionTracker.removeTracker(stats);
-    }
-
-    private void accessed() {
-        if (wasInitialized()) {
-            collectionTracker.trackAccess(set);
-        }
+        this.collectionTracker.removeTracker(stats);
     }
 
     /**
@@ -82,9 +95,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public int size() {
         int ret = super.size();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -94,9 +105,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public boolean isEmpty() {
         boolean ret = super.isEmpty();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -106,9 +115,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public boolean contains(Object object) {
         boolean ret = super.contains(object);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -118,9 +125,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public Iterator iterator() {
         Iterator iter = super.iterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return iter;
     }
 
@@ -130,9 +135,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public Object[] toArray() {
         Object[] arr = super.toArray();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -142,9 +145,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public Object[] toArray(Object[] array) {
         Object[] arr = super.toArray(array);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -153,20 +154,19 @@ public class AutofetchSet extends PersistentSet implements Trackable {
      */
     @Override
     public boolean add(Object value) {
-        Boolean exists = isOperationQueueEnabled()
-                ? readElementExistence(value) : null;
+        Boolean exists = isOperationQueueEnabled() ? readElementExistence(value) : null;
         if (exists == null) {
             initialize(true);
-            accessed();
-            if (set.add(value)) {
-                dirty();
+            this.accessed();
+            if (this.set.add(value)) {
+                this.dirty();
                 return true;
-            } else {
-                return false;
             }
-        } else {
-            return super.add(value);
+
+            return false;
         }
+
+        return super.add(value);
     }
 
     /**
@@ -175,9 +175,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public boolean remove(Object value) {
         boolean ret = super.remove(value);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -187,9 +185,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public boolean containsAll(Collection coll) {
         boolean ret = super.containsAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -200,16 +196,16 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     public boolean addAll(Collection coll) {
         if (coll.size() > 0) {
             initialize(true);
-            accessed();
-            if (set.addAll(coll)) {
-                dirty();
+            this.accessed();
+            if (this.set.addAll(coll)) {
+                this.dirty();
                 return true;
-            } else {
-                return false;
             }
-        } else {
+
             return false;
         }
+
+        return false;
     }
 
     /**
@@ -218,9 +214,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public boolean retainAll(Collection coll) {
         boolean val = super.retainAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -230,50 +224,45 @@ public class AutofetchSet extends PersistentSet implements Trackable {
     @Override
     public boolean removeAll(Collection coll) {
         boolean val = super.removeAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
     @Override
     public void clear() {
         super.clear();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
     }
 
     @Override
     public String toString() {
         String ret = super.toString();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public boolean equals(Object other) {
         boolean ret = super.equals(other);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public int hashCode() {
         int ret = super.hashCode();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
-    
+
+    @Override
     public boolean isAccessed() {
-        return collectionTracker.isAccessed();
+        return this.collectionTracker.isAccessed();
+    }
+
+    private void accessed() {
+        if (wasInitialized()) {
+            this.collectionTracker.trackAccess(this.set);
+        }
     }
 }
-
-

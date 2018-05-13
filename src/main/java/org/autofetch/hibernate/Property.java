@@ -1,17 +1,16 @@
 /**
  * Copyright 2008 Ali Ibrahim
- * 
+ * <p>
  * This file is part of Autofetch.
  * Autofetch is free software: you can redistribute it and/or modify
- * it under the terms of the Lesser GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, 
- * or (at your option) any later version. Autofetch is distributed in the 
- * hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
- * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
- * PURPOSE.  See the Lesser GNU General Public License for more details. You 
- * should have received a copy of the Lesser GNU General Public License along 
+ * it under the terms of the Lesser GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version. Autofetch is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the Lesser GNU General Public License for more details. You
+ * should have received a copy of the Lesser GNU General Public License along
  * with Autofetch.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 package org.autofetch.hibernate;
 
@@ -19,25 +18,22 @@ import java.io.Serializable;
 
 /**
  * Immutable.
- * 
+ *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
- * 
  */
- 
- //Used in EntityTracker, EntityProxy-classes, describes the persistent entities.
 public class Property implements Serializable {
 
-    private String name;
+    private final String name;
 
-    private boolean collection;
+    private final boolean collection;
 
-    public Property(String name, boolean collection) {
-        super();
-        if (name == null) {
+    public Property(org.hibernate.mapping.Property property) {
+        if (property == null) {
             throw new NullPointerException("property name cannot be null");
         }
-        this.name = name;
-        this.collection = collection;
+
+        this.name = property.getName();
+        this.collection = property.getType().isCollectionType();
     }
 
     public boolean isCollection() {
@@ -51,32 +47,35 @@ public class Property implements Serializable {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append(name);
-        if (collection) {
+        str.append(this.name);
+        if (this.collection) {
             str.append("<C>");
         }
+
         return str.toString();
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (collection ? 1231 : 1237);
-        result = PRIME * result + name.hashCode();
-        return result;
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        Property property = (Property) o;
+        if (isCollection() != property.isCollection()) {
+            return false;
+        }
+
+        return getName().equals(property.getName());
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj instanceof Property) {
-            final Property other = (Property) obj;
-            return collection == other.collection
-                    && name.equals(other.name);
-        } else {
-            return false;
-        }
+    public int hashCode() {
+        int result = getName().hashCode();
+        result = 31 * result + (isCollection() ? 1 : 0);
+        return result;
     }
 }

@@ -11,18 +11,19 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
+        <hibernate-orm.version>4.3.10.Final</hibernate-orm.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
-            <version>4.3.10.Final</version>
+            <version>${hibernate-orm.version}</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-testing</artifactId>
-            <version>4.3.10.Final</version>
+            <version>${hibernate-orm.version}</version>
         </dependency>
 
         <dependency>
@@ -55,4 +56,37 @@
             <scope>provided</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.hibernate.orm.tooling</groupId>
+                <artifactId>hibernate-enhance-maven-plugin</artifactId>
+                <version>${hibernate-orm.version}</version>
+                <configuration>
+                    <failOnError>true</failOnError>
+                    <enableLazyInitialization>true</enableLazyInitialization>
+                    <enableDirtyTracking>true</enableDirtyTracking>
+                    <enableAssociationManagement>true</enableAssociationManagement>
+                    <enableExtendedEnhancement>false</enableExtendedEnhancement>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>enhance</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>enhance</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

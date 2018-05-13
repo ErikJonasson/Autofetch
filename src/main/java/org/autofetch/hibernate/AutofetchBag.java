@@ -12,6 +12,7 @@
  */
 package org.autofetch.hibernate;
 
+import org.hibernate.collection.internal.PersistentBag;
 import org.hibernate.engine.spi.SessionImplementor;
 
 import java.util.Collection;
@@ -21,7 +22,7 @@ import java.util.ListIterator;
 import java.util.Set;
 
 /**
- * Based on org.hibernate.collection.PersistentBag.
+ * Based on {@link PersistentBag}.
  * Usually delegates to super class except when operation
  * might add an element. In that case, it re-implements
  * the method so that it can record an access before the
@@ -30,60 +31,55 @@ import java.util.Set;
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 @SuppressWarnings("unchecked")
-public class AutofetchBag extends org.hibernate.collection.internal.PersistentBag implements Trackable {
+public class AutofetchBag extends PersistentBag implements Trackable {
 
-    private CollectionTracker collectionTracker = new CollectionTracker();
+    private final CollectionTracker collectionTracker = new CollectionTracker();
 
-    public AutofetchBag() {
-        super();
+    @SuppressWarnings("unused")
+    protected AutofetchBag() {
+        // Available only for serialization.
     }
 
-    public AutofetchBag(SessionImplementor si, Collection s) {
-        super(si, s);
+    public AutofetchBag(SessionImplementor session) {
+        super(session);
     }
 
-    public AutofetchBag(SessionImplementor si) {
-        super(si);
+    public AutofetchBag(SessionImplementor session, Collection coll) {
+        super(session, coll);
     }
 
     @Override
     public void addTracker(Statistics tracker) {
-        collectionTracker.addTracker(tracker);
+        this.collectionTracker.addTracker(tracker);
     }
 
     @Override
     public void addTrackers(Set<Statistics> trackers) {
-        collectionTracker.addTrackers(trackers);
+        this.collectionTracker.addTrackers(trackers);
     }
 
     @Override
     public boolean disableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(false);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(false);
         return oldValue;
     }
 
     @Override
     public boolean enableTracking() {
-        boolean oldValue = collectionTracker.isTracking();
-        collectionTracker.setTracking(true);
+        boolean oldValue = this.collectionTracker.isTracking();
+        this.collectionTracker.setTracking(true);
         return oldValue;
     }
 
     @Override
     public void removeTracker(Statistics stats) {
-        collectionTracker.removeTracker(stats);
+        this.collectionTracker.removeTracker(stats);
     }
 
     @Override
     public boolean isAccessed() {
-        return collectionTracker.isAccessed();
-    }
-
-    private void accessed() {
-        if (wasInitialized()) {
-            collectionTracker.trackAccess(bag);
-        }
+        return this.collectionTracker.isAccessed();
     }
 
     /**
@@ -92,9 +88,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public int size() {
         int ret = super.size();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -104,9 +98,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean isEmpty() {
         boolean ret = super.isEmpty();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -116,9 +108,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean contains(Object object) {
         boolean ret = super.contains(object);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -128,9 +118,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public Iterator iterator() {
         Iterator iter = super.iterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return iter;
     }
 
@@ -140,9 +128,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public Object[] toArray() {
         Object[] arr = super.toArray();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -152,9 +138,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public Object[] toArray(Object[] array) {
         Object[] arr = super.toArray(array);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return arr;
     }
 
@@ -163,13 +147,13 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
      */
     @Override
     public boolean add(Object value) {
-        if (!isOperationQueueEnabled()) {
-            write();
-            accessed();
-            return bag.add(value);
-        } else {
+        if (isOperationQueueEnabled()) {
             return super.add(value);
         }
+
+        this.write();
+        this.accessed();
+        return this.bag.add(value);
     }
 
     /**
@@ -178,9 +162,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean remove(Object value) {
         boolean ret = super.remove(value);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -190,9 +172,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean containsAll(Collection coll) {
         boolean ret = super.containsAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
@@ -205,21 +185,19 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
             return false;
         }
 
-        if (!isOperationQueueEnabled()) {
-            write();
-            accessed();
-            return bag.addAll(values);
-        } else {
+        if (isOperationQueueEnabled()) {
             return super.addAll(values);
         }
+
+        this.write();
+        this.accessed();
+        return this.bag.addAll(values);
     }
 
     @Override
     public void clear() {
         super.clear();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
     }
 
     /**
@@ -228,9 +206,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean retainAll(Collection coll) {
         boolean val = super.retainAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -240,9 +216,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean removeAll(Collection coll) {
         boolean val = super.removeAll(coll);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -251,9 +225,9 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
      */
     @Override
     public void add(int i, Object o) {
-        write();
-        accessed();
-        bag.add(i, o);
+        this.write();
+        this.accessed();
+        this.bag.add(i, o);
     }
 
     /**
@@ -262,12 +236,12 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public boolean addAll(int i, Collection c) {
         if (c.size() > 0) {
-            write();
-            accessed();
-            return bag.addAll(i, c);
-        } else {
-            return false;
+            this.write();
+            this.accessed();
+            return this.bag.addAll(i, c);
         }
+
+        return false;
     }
 
     /**
@@ -276,9 +250,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public Object get(int i) {
         Object val = super.get(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -288,9 +260,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public int indexOf(Object o) {
         int val = super.indexOf(o);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -300,9 +270,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public int lastIndexOf(Object o) {
         int val = super.lastIndexOf(o);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -312,9 +280,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public ListIterator listIterator() {
         ListIterator val = super.listIterator();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -324,9 +290,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public ListIterator listIterator(int i) {
         ListIterator val = super.listIterator(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -336,9 +300,7 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public Object remove(int i) {
         Object val = super.remove(i);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
@@ -347,8 +309,8 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
      */
     @Override
     public Object set(int i, Object o) {
-        write();
-        accessed();
+        this.write();
+        this.accessed();
         return bag.set(i, o);
     }
 
@@ -358,37 +320,34 @@ public class AutofetchBag extends org.hibernate.collection.internal.PersistentBa
     @Override
     public List subList(int start, int end) {
         List val = super.subList(start, end);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return val;
     }
 
     @Override
     public String toString() {
-        //if (needLoading) return "asleep";
         String ret = super.toString();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public boolean equals(Object other) {
         boolean ret = super.equals(other);
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
     }
 
     @Override
     public int hashCode() {
         int ret = super.hashCode();
-        if (wasInitialized()) {
-            accessed();
-        }
+        this.accessed();
         return ret;
+    }
+
+    private void accessed() {
+        if (this.wasInitialized()) {
+            this.collectionTracker.trackAccess(this.bag);
+        }
     }
 }

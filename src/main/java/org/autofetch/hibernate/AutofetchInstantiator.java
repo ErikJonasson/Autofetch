@@ -18,52 +18,47 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.tuple.PojoInstantiator;
 
-import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
 /**
- * This code is based on the instantior implementations in the Hibernate
- * source code.
- * It instantiates entities using proxies so that their accesses may be
- * tracked.
+ * This code is based on the instantiator implementations in the Hibernate source code.
+ * It instantiates entities using proxies so that their accesses may be tracked.
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 public class AutofetchInstantiator extends PojoInstantiator {
 
-    private Class mappedClass;
+    private final ExtentManager extentManager;
 
-    private String idMethodName = "***none***";
+    private final Class<?> mappedClass;
 
-    private final boolean embeddedIdentifier;
-
-    private final Class proxyInterface;
+    private final String idMethodName;
 
     private Set<org.autofetch.hibernate.Property> persistentProperties;
 
-    private final ExtentManager extentManager;
-
-    public AutofetchInstantiator(PersistentClass persistentClass, ReflectionOptimizer.InstantiationOptimizer optimizer, ExtentManager extentManager) {
+    public AutofetchInstantiator(PersistentClass persistentClass,
+                                 ReflectionOptimizer.InstantiationOptimizer optimizer,
+                                 ExtentManager extentManager) {
         super(persistentClass, optimizer);
-        this.extentManager = extentManager;
 
+        this.extentManager = extentManager;
         this.mappedClass = persistentClass.getMappedClass();
-        if (persistentClass.getIdentifierProperty() != null && persistentClass.getIdentifierProperty().getGetter(mappedClass) != null) {
-            this.idMethodName = persistentClass.getIdentifierProperty().getGetter(mappedClass).getMethodName();
+
+        if (persistentClass.getIdentifierProperty() != null &&
+                persistentClass.getIdentifierProperty().getGetter(this.mappedClass) != null) {
+            this.idMethodName = persistentClass.getIdentifierProperty().getGetter(this.mappedClass).getMethodName();
+        } else {
+            this.idMethodName = null;
         }
 
-        this.proxyInterface = persistentClass.getProxyInterface();
-        this.embeddedIdentifier = persistentClass.hasEmbeddedIdentifier();
         this.persistentProperties = new HashSet<>();
 
         @SuppressWarnings("unchecked")
         Iterator<Property> propIter = persistentClass.getPropertyClosureIterator();
         while (propIter.hasNext()) {
-            Property prop = propIter.next();
-            org.autofetch.hibernate.Property p = new org.autofetch.hibernate.Property(prop.getName(), prop.getType().isCollectionType());
-            this.persistentProperties.add(p);
+            this.persistentProperties.add(new org.autofetch.hibernate.Property(propIter.next()));
         }
     }
 
@@ -75,17 +70,5 @@ public class AutofetchInstantiator extends PojoInstantiator {
         } catch (Exception ie) {
             throw new HibernateException("Unable to instantiate class", ie);
         }
-    }
-
-    @Override
-    public Object instantiate(Serializable id) {
-        // replicate logic in Hibernate PojoInstantiator
-        final boolean useEmbeddedIdentifierInstanceAsEntity = embeddedIdentifier && id != null && id.getClass().equals(mappedClass);
-        return useEmbeddedIdentifierInstanceAsEntity ? id : instantiate();
-    }
-
-    @Override
-    public boolean isInstance(Object o) {
-        return mappedClass.isInstance(o) || (proxyInterface != null && proxyInterface.isInstance(o));
     }
 }
