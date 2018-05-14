@@ -58,6 +58,7 @@
     </dependencies>
 
     <build>
+    <pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.hibernate.orm.tooling</groupId>
@@ -88,5 +89,6 @@
                 </executions>
             </plugin>
         </plugins>
+          </pluginManagement>
     </build>
 </project>
