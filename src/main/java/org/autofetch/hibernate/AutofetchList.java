@@ -14,6 +14,7 @@ package org.autofetch.hibernate;
 
 import org.hibernate.collection.internal.PersistentList;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -40,11 +41,11 @@ public class AutofetchList extends PersistentList implements Trackable {
         // Available only for serialization.
     }
 
-    public AutofetchList(SessionImplementor session) {
+    public AutofetchList(SharedSessionContractImplementor session) {
         super(session);
     }
 
-    public AutofetchList(SessionImplementor session, List list) {
+    public AutofetchList(SharedSessionContractImplementor session, List list) {
         super(session, list);
     }
 

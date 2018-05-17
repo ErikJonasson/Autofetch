@@ -14,6 +14,7 @@ package org.autofetch.hibernate;
 
 import org.hibernate.collection.internal.PersistentBag;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -40,12 +41,12 @@ public class AutofetchBag extends PersistentBag implements Trackable {
         // Available only for serialization.
     }
 
-    public AutofetchBag(SessionImplementor session) {
-        super(session);
+    public AutofetchBag(SharedSessionContractImplementor arg0) {
+        super(arg0);
     }
 
-    public AutofetchBag(SessionImplementor session, Collection coll) {
-        super(session, coll);
+    public AutofetchBag(SharedSessionContractImplementor arg0, Collection coll) {
+        super(arg0, coll);
     }
 
     @Override

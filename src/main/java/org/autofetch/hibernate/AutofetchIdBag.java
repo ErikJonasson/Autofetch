@@ -14,6 +14,7 @@ package org.autofetch.hibernate;
 
 import org.hibernate.collection.internal.PersistentIdentifierBag;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -40,11 +41,11 @@ public class AutofetchIdBag extends PersistentIdentifierBag implements Trackable
         // Available only for serialization.
     }
 
-    public AutofetchIdBag(SessionImplementor session) {
+    public AutofetchIdBag(SharedSessionContractImplementor session) {
         super(session);
     }
 
-    public AutofetchIdBag(SessionImplementor session, Collection coll) {
+    public AutofetchIdBag(SharedSessionContractImplementor session, Collection coll) {
         super(session, coll);
     }
 

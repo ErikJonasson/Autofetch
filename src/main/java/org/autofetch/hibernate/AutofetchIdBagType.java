@@ -21,6 +21,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.collection.internal.PersistentIdentifierBag;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.usertype.UserCollectionType;
 
@@ -32,19 +33,14 @@ import org.hibernate.usertype.UserCollectionType;
 public class AutofetchIdBagType implements UserCollectionType {
 
 	@Override
-	public PersistentCollection wrap(SessionImplementor session, Object collection) {
-		return new AutofetchIdBag( session, cast( collection ) );
-	}
-
-	@Override
 	public Object instantiate(int anticipatedSize) {
 		return anticipatedSize <= 0 ? new ArrayList() : new ArrayList( anticipatedSize + 1 );
 	}
 
 	@Override
-	public PersistentCollection instantiate(SessionImplementor session, CollectionPersister persister)
+	public PersistentCollection instantiate(SharedSessionContractImplementor session, CollectionPersister persister)
 			throws HibernateException {
-		return new AutofetchIdBag();
+		return new AutofetchIdBag(session);
 	}
 
 	@Override
@@ -62,16 +58,22 @@ public class AutofetchIdBagType implements UserCollectionType {
 		return ( (PersistentIdentifierBag) collection ).indexOf( entity );
 	}
 
-	@Override
-	public Object replaceElements(
-			Object original, Object target, CollectionPersister persister, Object owner,
-			Map copyCache, SessionImplementor session) throws HibernateException {
-		( (PersistentIdentifierBag) target ).clear();
-		( (PersistentIdentifierBag) target ).addAll( (Collection<?>) original );
-		return target;
-	}
 
 	protected Collection cast(Object collection) {
 		return (Collection) collection;
+	}
+
+
+	@Override
+	public PersistentCollection wrap(SharedSessionContractImplementor session, Object collection) {
+		return new AutofetchIdBag(session, cast(collection));
+	}
+
+	@Override
+	public Object replaceElements(Object original, Object target, CollectionPersister persister, Object owner,
+			Map copyCache, SharedSessionContractImplementor session) throws HibernateException {
+		( (PersistentIdentifierBag) target ).clear();
+		( (PersistentIdentifierBag) target ).addAll( (Collection<?>) original );
+		return target;
 	}
 }

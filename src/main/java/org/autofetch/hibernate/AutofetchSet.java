@@ -14,6 +14,7 @@ package org.autofetch.hibernate;
 
 import org.hibernate.collection.internal.PersistentSet;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -46,7 +47,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
      *
      * @param session The session to which this set will belong.
      */
-    public AutofetchSet(SessionImplementor session) {
+    public AutofetchSet(SharedSessionContractImplementor session) {
         super(session);
     }
 
@@ -56,7 +57,7 @@ public class AutofetchSet extends PersistentSet implements Trackable {
      * @param session The session to which this set will belong.
      * @param set     The underlying set data.
      */
-    public AutofetchSet(SessionImplementor session, Set set) {
+    public AutofetchSet(SharedSessionContractImplementor session, Set set) {
         super(session, set);
     }
 

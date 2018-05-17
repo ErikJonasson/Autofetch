@@ -23,6 +23,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.collection.internal.PersistentBag;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.usertype.UserCollectionType;
 
@@ -41,19 +42,8 @@ public class AutofetchBagType implements UserCollectionType {
 	}
 
 	@Override
-	public PersistentCollection wrap(SessionImplementor session, Object collection) {
-		return new AutofetchBag( session, cast( collection ) );
-	}
-
-	@Override
 	public Object instantiate(int anticipatedSize) {
 		return anticipatedSize <= 0 ? new ArrayList() : new ArrayList( anticipatedSize + 1 );
-	}
-
-	@Override
-	public PersistentCollection instantiate(SessionImplementor session, CollectionPersister persister)
-			throws HibernateException {
-		return new AutofetchBag( session );
 	}
 
 	@Override
@@ -71,16 +61,27 @@ public class AutofetchBagType implements UserCollectionType {
 		throw new UnsupportedOperationException();
 	}
 
-	@Override
-	public Object replaceElements(
-			Object original, Object target, CollectionPersister persister, Object owner,
-			Map copyCache, SessionImplementor session) throws HibernateException {
-		( (PersistentBag) target ).clear();
-		( (PersistentBag) target ).addAll( (Collection<?>) original );
-		return target;
-	}
-
 	protected Collection cast(Object collection) {
 		return (Collection) collection;
+	}
+
+	@Override
+	public PersistentCollection instantiate(SharedSessionContractImplementor arg0, CollectionPersister arg1)
+			throws HibernateException {
+		return new AutofetchBag(arg0);
+	}
+
+	@Override
+	public Object replaceElements(Object arg0, Object arg1, CollectionPersister arg2, Object arg3, Map arg4,
+			SharedSessionContractImplementor arg5) throws HibernateException {
+		( (PersistentBag) arg1 ).clear();
+		( (PersistentBag) arg1 ).addAll( (Collection<?>) arg0 );
+		return arg1;
+	}
+
+	@Override
+	public PersistentCollection wrap(SharedSessionContractImplementor arg0, Object arg1) {
+		return new AutofetchBag( arg0, cast( arg1 ) );
+		
 	}
 }

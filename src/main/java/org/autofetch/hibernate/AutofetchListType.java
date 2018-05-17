@@ -22,6 +22,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.collection.internal.PersistentList;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.usertype.UserCollectionType;
 
@@ -33,7 +34,7 @@ import org.hibernate.usertype.UserCollectionType;
 public class AutofetchListType implements UserCollectionType {
 
 	@Override
-	public PersistentCollection wrap(SessionImplementor session, Object collection) {
+	public PersistentCollection wrap(SharedSessionContractImplementor session, Object collection) {
 		return new AutofetchList( session, cast( collection ) );
 	}
 
@@ -48,7 +49,7 @@ public class AutofetchListType implements UserCollectionType {
 	}
 
 	@Override
-	public PersistentCollection instantiate(SessionImplementor session, CollectionPersister persister)
+	public PersistentCollection instantiate(SharedSessionContractImplementor session, CollectionPersister persister)
 			throws HibernateException {
 		return new AutofetchList( session );
 	}
@@ -66,7 +67,7 @@ public class AutofetchListType implements UserCollectionType {
 	@Override
 	public Object replaceElements(
 			Object original, Object target, CollectionPersister persister, Object owner,
-			Map copyCache, SessionImplementor session) throws HibernateException {
+			Map copyCache, SharedSessionContractImplementor session) throws HibernateException {
 		( (PersistentList) target ).clear();
 		( (PersistentList) target ).addAll( (Collection<?>) original );
 		return target;
