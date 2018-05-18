@@ -3,6 +3,8 @@
  */
 package org.autofetch.test;
 
+import java.util.Map;
+
 import org.hibernate.Criteria;
 import org.hibernate.Hibernate;
 import org.hibernate.LazyInitializationException;
@@ -10,10 +12,9 @@ import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.hibernate.boot.registry.internal.StandardServiceRegistryImpl;
 import org.hibernate.criterion.Restrictions;
+import org.hibernate.jpa.AvailableSettings;
 
-import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -28,7 +29,7 @@ import org.autofetch.hibernate.TraversalProfile;
  *
  * @author aibrahim
  */
-public class ExtentTest extends BaseCoreFunctionalTestCase {
+public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	// Number of subordinates for root object in createNObjectGraph
 	private static final int NUM_SUBORDINATES = 50;
@@ -37,31 +38,20 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
 	private ExtentManager em;
 
-	private StandardServiceRegistryImpl registry;
-
 	private SessionFactory sf;
 
 	@Test
 	public void testSimpleLoad() {
 		em.clearExtentInformation();
 
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
+		try (Session sess = openSession()) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertTrue( "object should not be intialized", !Hibernate.isInitialized( dave ) );
-			dave.getName();
+			Assert.assertNotNull( dave.getName() );
 			Assert.assertTrue( "object should be intialized now", Hibernate.isInitialized( dave ) );
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
@@ -71,14 +61,12 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
 		Long daveId = createObjectGraph( true );
 
-		Session sess = openSession();
-		Transaction tx = null;
-		tx = sess.beginTransaction();
-		Employee dave = (Employee) sess.load( Employee.class, daveId );
-		tx.commit();
-		dave.getName();
-		session.close();
-		hashCode();
+		try (Session sess = openSession()) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			tx.commit();
+			Assert.assertNotNull( dave.getName() );
+		}
 	}
 
 	/**
@@ -94,14 +82,14 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
 		// These all should not throw lazy instantiation exception, because
 		// they should have been fetch eagerly
-		dave.getSupervisor().getName();
-		dave.getSupervisor().getSupervisor().getName();
-		dave.getSupervisor().getSupervisor().getSubordinates().size();
-		dave.getMentor().getName();
+		Assert.assertNotNull( dave.getSupervisor().getName() );
+		Assert.assertNotNull( dave.getSupervisor().getSupervisor().getName() );
+		Assert.assertNotEquals( 0, dave.getSupervisor().getSupervisor().getSubordinates().size() );
+		Assert.assertNotNull( dave.getMentor().getName() );
 
 		// This should throw a lazy instantiation exception
 		try {
-			dave.getSupervisor().getSupervisor().getSupervisor().getName();
+			Assert.assertNotNull( dave.getSupervisor().getSupervisor().getSupervisor().getName() );
 			// Shouldn't get here
 			Assert.fail( "Lazy instantion exception not thrown for a property which shouldn't have been fetched" );
 		}
@@ -126,9 +114,9 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 		// These all should not throw lazy instantiation exception, because
 		// they should have been fetch eagerly.
 
-		dave.getSupervisor().getName();
-		dave.getSupervisor().getSubordinates().size();
-		dave.getSubordinates().iterator().next().getSubordinates().size();
+		Assert.assertNotNull( dave.getSupervisor().getName() );
+		Assert.assertNotEquals( 0, dave.getSupervisor().getSubordinates().size() );
+		Assert.assertNotEquals( 0, dave.getSubordinates().iterator().next().getSubordinates().size() );
 	}
 
 	/**
@@ -147,7 +135,7 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 		// These all should not throw lazy instantiation exception, because
 		// they should have been fetch eagerly.
 		for ( Employee employee : dave.getSubordinates() ) {
-			employee.getSubordinates().size();
+			Assert.assertNotEquals( 0, employee.getSubordinates().size() );
 		}
 	}
 
@@ -166,14 +154,14 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 
 		// These all should not throw lazy instantiation exception, because
 		// they should have been fetch eagerly
-		dave.getSupervisor().getName();
-		dave.getSupervisor().getSupervisor().getName();
-		dave.getSupervisor().getSupervisor().getSubordinates().size();
-		dave.getMentor().getName();
+		Assert.assertNotNull( dave.getSupervisor().getName() );
+		Assert.assertNotNull( dave.getSupervisor().getSupervisor().getName() );
+		Assert.assertNotEquals( 0, dave.getSupervisor().getSupervisor().getSubordinates().size() );
+		Assert.assertNotNull( dave.getMentor().getName() );
 
 		// This should throw a lazy instantiation exception
 		try {
-			dave.getSupervisor().getSupervisor().getSupervisor().getName();
+			Assert.assertNotNull( dave.getSupervisor().getSupervisor().getSupervisor().getName() );
 			// Shouldn't get here
 			Assert.fail( "Lazy instantion exception not thrown for a property which shouldn't have been fetched" );
 		}
@@ -198,11 +186,10 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 		// These all should not throw lazy instantiation exception, because
 		// they should have been fetch eagerly.
 
-		dave.getSupervisor().getName();
-		dave.getSupervisor().getSubordinates().size();
-		dave.getSubordinates().iterator().next().getSubordinates().size();
+		Assert.assertNotNull( dave.getSupervisor().getName() );
+		Assert.assertNotEquals( 0, dave.getSupervisor().getSubordinates().size() );
+		Assert.assertNotEquals( 0, dave.getSubordinates().iterator().next().getSubordinates().size() );
 	}
-
 
 	/**
 	 * Test accessing address and checking extent statistics. Since address is a component, there should be not sub-extent for it.
@@ -450,102 +437,67 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 	}
 
 	private void collectionAccess1() {
-		Session sess;
-		Transaction tx = null;
 		Long grandfatherId = createNObjectGraph();
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee grandfather = (Employee) sess.load( Employee.class, grandfatherId );
+		try (Session sess = openSession()) {
+			Transaction tx = sess.beginTransaction();
+			Employee grandfather = sess.load( Employee.class, grandfatherId );
 			Assert.assertEquals(
 					"Checking size of subordinates collection",
 					NUM_SUBORDINATES,
 					grandfather.getSubordinates().size()
 			);
 			for ( Employee child : grandfather.getSubordinates() ) {
-				child.getName();
+				Assert.assertNotNull( child.getName() );
 			}
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private void collectionAccess2() {
-		Session sess;
-		Transaction tx = null;
 		Long grandfatherId = createNObjectGraph();
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee grandfather = (Employee) sess.load( Employee.class, grandfatherId );
+		try (Session sess = openSession()) {
+
+			Transaction tx = sess.beginTransaction();
+			Employee grandfather = sess.load( Employee.class, grandfatherId );
 			Assert.assertEquals(
 					"Checking size of subordinates collection",
 					NUM_SUBORDINATES,
 					grandfather.getSubordinates().size()
 			);
 			for ( Employee child : grandfather.getSubordinates() ) {
-				child.getName();
-				child.getMentor().getName();
+				Assert.assertNotNull( child.getName() );
+				Assert.assertNotNull( child.getMentor().getName() );
 			}
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private void collectionAccess3() {
-		Session sess;
-		Transaction tx = null;
 		Long grandfatherId = createNObjectGraph();
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee grandfather = (Employee) sess.load( Employee.class, grandfatherId );
+		try (Session sess = openSession()) {
+			Transaction tx = sess.beginTransaction();
+			Employee grandfather = sess.load( Employee.class, grandfatherId );
 			Assert.assertEquals(
 					"Checking size of subordinates collection",
 					NUM_SUBORDINATES,
 					grandfather.getSubordinates().size()
 			);
 			for ( Employee child : grandfather.getSubordinates() ) {
-				child.getName();
+				Assert.assertNotNull( child.getName() );
 				child.getSubordinates().size();
 			}
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private void addressAccess() {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getAddress().getStreet();
-			dave.getAddress().getCity(); // Second access shouldn't make a difference
+		try (Session sess = openSession()) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotNull( dave.getAddress().getStreet() );
+			Assert.assertNotNull( dave.getAddress().getCity() ); // Second access shouldn't make a difference
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
@@ -554,249 +506,139 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 	}
 
 	private void mentorAccess() {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getMentor().getName();
-			dave.getMentor().getName(); // Second access shouldn't make a difference
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotNull( dave.getMentor().getName() );
+			Assert.assertNotNull( dave.getMentor().getName() ); // Second access shouldn't make a difference
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private void friendAccess() {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getFriends().size();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotEquals( 0, , dave.getFriends().size() );
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private void secondLevelSupervisorAccess() {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getSupervisor();
-			dave.getSupervisor().getSupervisor().getName();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotNull( dave.getSupervisor() );
+			Assert.assertNotNull( dave.getSupervisor().getSupervisor().getName() );
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private void supervisorAndMentorAccess() {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getSupervisor().getName();
-			dave.getMentor().getName();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotNull( dave.getSupervisor().getName() );
+			Assert.assertNotNull( dave.getMentor().getName() );
 			tx.commit();
-			tx = null;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 
 	private Employee someAccess(boolean traverse) {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getName();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotNull( dave.getName() );
 			if ( traverse ) {
-				dave.getSupervisor().getName();
-				dave.getMentor().getName();
-				dave.getSupervisor().getSupervisor().getName();
-				dave.getSupervisor().getSupervisor().getSubordinates().size();
+				Assert.assertNotNull( dave.getSupervisor().getName() );
+				Assert.assertNotNull( dave.getMentor().getName() );
+				Assert.assertNotNull( dave.getSupervisor().getSupervisor().getName() );
+				Assert.assertNotEquals( 0, dave.getSupervisor().getSupervisor().getSubordinates().size() );
 			}
 			tx.commit();
-			tx = null;
 			return dave;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
-			session.close();
 		}
 	}
 
 	private Employee someAccessCriteria(boolean traverse) {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( true );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
 			Criteria crit = new AutofetchCriteria( sess.createCriteria( Employee.class ) );
 			crit.add( Restrictions.eq( "id", daveId ) );
 			Employee dave = (Employee) crit.uniqueResult();
-			dave.getName();
+			Assert.assertNotNull( dave.getName() );
 			if ( traverse ) {
-				dave.getSupervisor().getName();
-				dave.getMentor().getName();
-				dave.getSupervisor().getSupervisor().getName();
-				dave.getSupervisor().getSupervisor().getSubordinates().size();
+				Assert.assertNotNull( dave.getSupervisor().getName() );
+				Assert.assertNotNull( dave.getMentor().getName() );
+				Assert.assertNotEquals( 0, dave.getSupervisor().getSupervisor().getName() );
+				Assert.assertNotEquals( 0, dave.getSupervisor().getSupervisor().getSubordinates().size() );
 			}
 			tx.commit();
-			tx = null;
 			return dave;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private Employee initializeCollectionAccess(boolean traverse) {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( false );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
 			Query q = sess.createQuery( "from Employee e where e.id = :id" );
 			q.setParameter( "id", daveId );
 			Employee dave = (Employee) q.uniqueResult();
-			dave.getName();
-			dave.getSubordinates().size();
+			Assert.assertNotNull( dave.getName() );
+			Assert.assertNotEquals( 0, dave.getSubordinates().size() );
 			if ( traverse ) {
 				for ( Employee employee : dave.getSubordinates() ) {
-					employee.getSubordinates().size();
+					Assert.assertNotEquals( 0, employee.getSubordinates().size() );
 				}
 			}
 			tx.commit();
-			tx = null;
 			return dave;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
-		}
-	}
-
-	private Employee initializeCollectionAccess2(boolean traverse) {
-		Session sess;
-		Transaction tx = null;
-		Long daveId = createObjectGraph( false );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Query q = sess.createQuery( "from Employee e where e.id = :id" );
-			q.setParameter( "id", daveId );
-			Employee dave = (Employee) q.uniqueResult();
-			dave.getName();
-			dave.getSubordinates().size();
-			if ( traverse ) {
-				for ( Employee employee : dave.getSubordinates() ) {
-					employee.getSubordinates().size();
-				}
-			}
-			tx.commit();
-			tx = null;
-			return dave;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private Employee multipleCollectionAccess(boolean traverse) {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( false );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
-			Employee dave = (Employee) sess.load( Employee.class, daveId );
-			dave.getName();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
+			Employee dave = sess.load( Employee.class, daveId );
+			Assert.assertNotNull( dave.getName() );
 			if ( traverse ) {
-				dave.getSupervisor().getName();
-				dave.getSupervisor().getSubordinates().size();
+				Assert.assertNotNull( dave.getSupervisor().getName() );
+				Assert.assertNotEquals( 0, dave.getSupervisor().getSubordinates().size() );
 				for ( Employee employee : dave.getSubordinates() ) {
-					employee.getSubordinates().size();
+					Assert.assertNotEquals( 0, employee.getSubordinates().size() );
 				}
 			}
 			tx.commit();
-			tx = null;
 			return dave;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
 	private Employee multipleCollectionAccessCriteria(boolean traverse) {
-		Session sess;
-		Transaction tx = null;
 		Long daveId = createObjectGraph( false );
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
+		try (Session sess = openSession();) {
+			Transaction tx = sess.beginTransaction();
 			Criteria crit = new AutofetchCriteria( sess.createCriteria( Employee.class ) );
 			crit.add( Restrictions.eq( "id", daveId ) );
 			Employee john = (Employee) crit.uniqueResult();
-			john.getName();
+			Assert.assertNotNull( john.getName() );
 			if ( traverse ) {
-				john.getSupervisor().getName();
-				john.getSupervisor().getSubordinates().size();
+				Assert.assertNotNull( john.getSupervisor().getName() );
+				Assert.assertNotEquals( 0, john.getSupervisor().getSubordinates().size() );
 				for ( Employee employee : john.getSubordinates() ) {
-					employee.getSubordinates().size();
+					Assert.assertNotEquals( 0, employee.getSubordinates().size() );
 				}
 			}
 			tx.commit();
-			tx = null;
 			return john;
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
@@ -884,7 +726,18 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 	}
 
 	@Override
-	protected void afterSessionFactoryBuilt() {
+	protected void afterEntityManagerFactoryBuilt() {
 		this.em = serviceRegistry().getService( AutofetchService.class ).getExtentManager();
+	}
+
+	@Override
+	protected void addConfigOptions(Map options) {
+		options.put( AvailableSettings.ENHANCER_ENABLE_DIRTY_TRACKING, true );
+		options.put( AvailableSettings.ENHANCER_ENABLE_LAZY_INITIALIZATION, true );
+		options.put( AvailableSettings.ENHANCER_ENABLE_ASSOCIATION_MANAGEMENT, true );
+	}
+
+	private Session openSession() {
+		return super.createEntityManager().unwrap( Session.class );
 	}
 }

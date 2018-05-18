@@ -44,10 +44,10 @@
             <version>2.3.5</version>
         </dependency>
         <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-log4j12</artifactId>
-        <version>1.6.6</version>
-    </dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.6.6</version>
+        </dependency>
 
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -56,39 +56,4 @@
             <scope>provided</scope>
         </dependency>
     </dependencies>
-
-    <build>
-    <pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.hibernate.orm.tooling</groupId>
-                <artifactId>hibernate-enhance-maven-plugin</artifactId>
-                <version>${hibernate-orm.version}</version>
-                <configuration>
-                    <failOnError>true</failOnError>
-                    <enableLazyInitialization>true</enableLazyInitialization>
-                    <enableDirtyTracking>true</enableDirtyTracking>
-                    <enableAssociationManagement>true</enableAssociationManagement>
-                    <enableExtendedEnhancement>false</enableExtendedEnhancement>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>enhance</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>enhance</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-          </pluginManagement>
-    </build>
 </project>
