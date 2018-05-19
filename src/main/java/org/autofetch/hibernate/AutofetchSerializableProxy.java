@@ -12,81 +12,103 @@
  */
 package org.autofetch.hibernate;
 
+import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.util.Set;
+
 import org.hibernate.HibernateException;
 import org.hibernate.proxy.AbstractSerializableProxy;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.pojo.javassist.JavassistLazyInitializer;
 import org.hibernate.type.CompositeType;
 
-import java.io.Serializable;
-import java.lang.reflect.Method;
-import java.util.Set;
-
 public final class AutofetchSerializableProxy extends AbstractSerializableProxy {
 
-    private Class persistentClass;
-    private Class[] interfaces;
-    private Class getIdentifierMethodClass;
-    private Class setIdentifierMethodClass;
-    private String getIdentifierMethodName;
-    private String setIdentifierMethodName;
-    private Class[] setIdentifierMethodParams;
-    private CompositeType componentIdType;
-    private Set<Property> persistentProperties;
+	private Class persistentClass;
+	private Class[] interfaces;
+	private final String identifierGetterMethodName;
+	private final Class identifierGetterMethodClass;
+	private final String identifierSetterMethodName;
+	private final Class identifierSetterMethodClass;
+	private final Class[] identifierSetterMethodParams;
+	private final CompositeType componentIdType;
+	private Set<Property> persistentProperties;
 
-    public AutofetchSerializableProxy() {
-    }
+	public AutofetchSerializableProxy(
+			final String entityName,
+			final Class persistentClass,
+			final Class[] interfaces,
+			final Serializable id,
+			final Boolean readOnly,
+			final Method getIdentifierMethod,
+			final Method setIdentifierMethod,
+			final CompositeType componentIdType,
+			final Set<Property> persistentProperties) {
 
-    public AutofetchSerializableProxy(
-            final String entityName,
-            final Class persistentClass,
-            final Class[] interfaces,
-            final Serializable id,
-            final Boolean readOnly,
-            final Method getIdentifierMethod,
-            final Method setIdentifierMethod,
-            final CompositeType componentIdType,
-            final Set<Property> persistentProperties) {
+		super( entityName, id, readOnly );
 
-        super(entityName, id, readOnly);
+		this.persistentClass = persistentClass;
+		this.interfaces = interfaces;
+		if ( getIdentifierMethod != null ) {
+			identifierGetterMethodName = getIdentifierMethod.getName();
+			identifierGetterMethodClass = getIdentifierMethod.getDeclaringClass();
+		}
+		else {
+			identifierGetterMethodName = null;
+			identifierGetterMethodClass = null;
+		}
 
-        this.persistentClass = persistentClass;
-        this.interfaces = interfaces;
+		if ( setIdentifierMethod != null ) {
+			identifierSetterMethodName = setIdentifierMethod.getName();
+			identifierSetterMethodClass = setIdentifierMethod.getDeclaringClass();
+			identifierSetterMethodParams = setIdentifierMethod.getParameterTypes();
+		}
+		else {
+			identifierSetterMethodName = null;
+			identifierSetterMethodClass = null;
+			identifierSetterMethodParams = null;
+		}
 
-        if (getIdentifierMethod != null) {
-            getIdentifierMethodClass = getIdentifierMethod.getDeclaringClass();
-            getIdentifierMethodName = getIdentifierMethod.getName();
-        }
+		this.componentIdType = componentIdType;
+		this.persistentProperties = persistentProperties;
+	}
 
-        if (setIdentifierMethod != null) {
-            setIdentifierMethodClass = setIdentifierMethod.getDeclaringClass();
-            setIdentifierMethodName = setIdentifierMethod.getName();
-            setIdentifierMethodParams = setIdentifierMethod.getParameterTypes();
-        }
-
-        this.componentIdType = componentIdType;
-        this.persistentProperties = persistentProperties;
-    }
-
-    private Object readResolve() {
-        try {
-            HibernateProxy proxy = AutofetchLazyInitializer.getProxy(
-                    getEntityName(),
-                    persistentClass,
-                    interfaces,
-                    getIdentifierMethodName == null ? null
-                            : getIdentifierMethodClass.getDeclaredMethod(getIdentifierMethodName, (Class[]) null),
-                    setIdentifierMethodName == null ? null
-                            : setIdentifierMethodClass.getDeclaredMethod(setIdentifierMethodName, setIdentifierMethodParams),
-                    componentIdType,
-                    getId(),
-                    null,
-                    persistentProperties
-            );
-            setReadOnlyBeforeAttachedToSession((JavassistLazyInitializer) proxy.getHibernateLazyInitializer());
-            return proxy;
-        } catch (NoSuchMethodException nsme) {
-            throw new HibernateException("could not create autofetch serializable proxy for entity: " + getEntityName(), nsme);
-        }
-    }
+	/**
+	 * Deserialization hook.  This method is called by JDK deserialization.  We use this hook
+	 * to replace the serial form with a live form.
+	 *
+	 * @return The live form.
+	 */
+	private Object readResolve() {
+		try {
+			HibernateProxy proxy = AutofetchLazyInitializer.getProxy(
+					getEntityName(),
+					persistentClass,
+					interfaces,
+					identifierGetterMethodClass == null ?
+							null
+							:
+							identifierGetterMethodClass.getDeclaredMethod( identifierGetterMethodName, (Class[]) null ),
+					identifierSetterMethodName == null ?
+							null
+							:
+							identifierSetterMethodClass.getDeclaredMethod(
+									identifierSetterMethodName,
+									identifierSetterMethodParams
+							),
+					componentIdType,
+					getId(),
+					null,
+					persistentProperties
+			);
+			setReadOnlyBeforeAttachedToSession( (JavassistLazyInitializer) proxy.getHibernateLazyInitializer() );
+			return proxy;
+		}
+		catch (NoSuchMethodException nsme) {
+			throw new HibernateException(
+					"could not create autofetch serializable proxy for entity: " + getEntityName(),
+					nsme
+			);
+		}
+	}
 }
