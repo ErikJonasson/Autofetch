@@ -12,11 +12,14 @@
  */
 package org.autofetch.hibernate;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
-import org.hibernate.cache.spi.CacheKey;
+import org.hibernate.cache.spi.access.CollectionDataAccess;
 import org.hibernate.cache.spi.entry.CollectionCacheEntry;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.internal.CacheHelper;
@@ -29,10 +32,8 @@ import org.hibernate.event.spi.InitializeCollectionEvent;
 import org.hibernate.event.spi.InitializeCollectionEventListener;
 import org.hibernate.persister.collection.CollectionPersister;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is based in part on
@@ -43,133 +44,150 @@ import java.util.List;
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
 public class AutofetchInitializeCollectionListener extends
-        DefaultInitializeCollectionEventListener implements InitializeCollectionEventListener {
+		DefaultInitializeCollectionEventListener implements InitializeCollectionEventListener {
 
-    private static final Log log = LogFactory.getLog(AutofetchInitializeCollectionListener.class);
+	private static final Logger log = LoggerFactory.getLogger( AutofetchInitializeCollectionListener.class );
 
-    private final ExtentManager extentManager;
+	private final ExtentManager extentManager;
 
-    public AutofetchInitializeCollectionListener(ExtentManager extentManager) {
-        this.extentManager = extentManager;
-    }
+	public AutofetchInitializeCollectionListener(ExtentManager extentManager) {
+		this.extentManager = extentManager;
+	}
 
-    @Override
-    public void onInitializeCollection(InitializeCollectionEvent event) throws HibernateException {
-        PersistentCollection collection = event.getCollection();
-        SessionImplementor source = event.getSession();
+	@Override
+	public void onInitializeCollection(InitializeCollectionEvent event) throws HibernateException {
+		PersistentCollection collection = event.getCollection();
+		SessionImplementor source = event.getSession();
 
-        CollectionEntry ce = source.getPersistenceContext().getCollectionEntry(collection);
-        if (ce == null) {
-            throw new HibernateException("collection was evicted");
-        }
+		CollectionEntry ce = source.getPersistenceContext().getCollectionEntry( collection );
+		if ( ce == null ) {
+			throw new HibernateException( "collection was evicted" );
+		}
 
-        if (!collection.wasInitialized()) {
+		if ( !collection.wasInitialized() ) {
 
-            final boolean foundInCache = initializeCollectionFromCache(
-                    ce.getLoadedKey(), ce.getLoadedPersister(), collection, source
-            );
+			final boolean foundInCache = initializeCollectionFromCache(
+					ce.getLoadedKey(), ce.getLoadedPersister(), collection, source
+			);
 
-            if (foundInCache) {
-                log.trace("collection initialized from cache");
-            } else {
-                log.trace("collection not cached");
+			if ( foundInCache ) {
+				log.trace( "collection initialized from cache" );
+			}
+			else {
+				log.trace( "collection not cached" );
 
-                CollectionPersister cp = ce.getLoadedPersister();
-                String classname = cp.getOwnerEntityPersister().getEntityName();
-                String tpKey = cp.getRole();
+				CollectionPersister cp = ce.getLoadedPersister();
+				String classname = cp.getOwnerEntityPersister().getEntityName();
+				String tpKey = cp.getRole();
 
-                List<Path> prefetchPaths = extentManager.getPrefetchPaths(tpKey);
-                if (!prefetchPaths.isEmpty()) {
-                    String assoc = tpKey.substring(tpKey.lastIndexOf('.') + 1);
-                    List<Path> augmentedPaths = new ArrayList<>();
-                    augmentedPaths.add(new Path().addTraversal(assoc));
+				List<Path> prefetchPaths = extentManager.getPrefetchPaths( tpKey );
+				if ( !prefetchPaths.isEmpty() ) {
+					String assoc = tpKey.substring( tpKey.lastIndexOf( '.' ) + 1 );
+					List<Path> augmentedPaths = new ArrayList<>();
+					augmentedPaths.add( new Path().addTraversal( assoc ) );
 
-                    for (Path p : prefetchPaths) {
-                        augmentedPaths.add(p.prependTraversal(assoc));
-                    }
+					for ( Path p : prefetchPaths ) {
+						augmentedPaths.add( p.prependTraversal( assoc ) );
+					}
 
-                    log.debug("Prefetch paths: " + augmentedPaths);
-                    AutofetchLoadListener.getResult(augmentedPaths,
-                            classname,
-                            ce.getKey(),
-                            LockMode.NONE,
-                            event.getSession());
+					log.debug( "Prefetch paths: " + augmentedPaths );
+					AutofetchLoadListener.getResult(
+							augmentedPaths,
+							classname,
+							ce.getKey(),
+							LockMode.NONE,
+							event.getSession()
+					);
 
-                    if (!collection.wasInitialized()) {
-                        throw new IllegalStateException("Collection not initialized");
-                    }
-                } else {
-                    ce.getLoadedPersister().initialize(ce.getLoadedKey(), source);
-                    if (source.getFactory().getStatistics().isStatisticsEnabled()) {
-                        source.getFactory().getStatisticsImplementor().fetchCollection(ce.getLoadedPersister().getRole());
-                    }
-                }
+					if ( !collection.wasInitialized() ) {
+						throw new IllegalStateException( "Collection not initialized" );
+					}
+				}
+				else {
+					ce.getLoadedPersister().initialize( ce.getLoadedKey(), source );
+					if ( source.getFactory().getStatistics().isStatisticsEnabled() ) {
+						source.getFactory().getStatisticsImplementor().fetchCollection( ce.getLoadedPersister()
+																								.getRole() );
+					}
+				}
 
-                boolean oldTracking = false;
-                if (collection instanceof Trackable) {
-                    Trackable trackable = (Trackable) collection;
-                    oldTracking = trackable.disableTracking();
-                }
+				boolean oldTracking = false;
+				if ( collection instanceof Trackable ) {
+					Trackable trackable = (Trackable) collection;
+					oldTracking = trackable.disableTracking();
+				}
 
-                Iterator elementsIter = collection.entries(cp);
-                while (elementsIter.hasNext()) {
-                    extentManager.markAsRoot(elementsIter.next(), tpKey);
-                }
+				Iterator elementsIter = collection.entries( cp );
+				while ( elementsIter.hasNext() ) {
+					extentManager.markAsRoot( elementsIter.next(), tpKey );
+				}
 
-                if (collection instanceof Trackable) {
-                    Trackable trackable = (Trackable) collection;
-                    if (oldTracking) {
-                        trackable.enableTracking();
-                    }
-                }
+				if ( collection instanceof Trackable ) {
+					Trackable trackable = (Trackable) collection;
+					if ( oldTracking ) {
+						trackable.enableTracking();
+					}
+				}
 
-                log.trace("collection initialized");
-            }
-        }
-    }
+				log.trace( "collection initialized" );
+			}
+		}
+	}
 
-    /**
-     * Try to initialize a collection from the cache
-     */
-    private boolean initializeCollectionFromCache(Serializable id,
-                                                  CollectionPersister persister,
-                                                  PersistentCollection collection,
-                                                  SessionImplementor source) throws HibernateException {
+	/**
+	 * Try to initialize a collection from the cache
+	 */
+	private boolean initializeCollectionFromCache(
+			Serializable id,
+			CollectionPersister persister,
+			PersistentCollection collection,
+			SessionImplementor source) throws HibernateException {
 
-        if (source.getLoadQueryInfluencers().hasEnabledFilters()
-                && persister.isAffectedByEnabledFilters(source)) {
-            return false;
-        }
+		if ( source.getLoadQueryInfluencers().hasEnabledFilters()
+				&& persister.isAffectedByEnabledFilters( source ) ) {
+			return false;
+		}
 
-        final boolean useCache = persister.hasCache() && source.getCacheMode().isGetEnabled();
+		final boolean useCache = persister.hasCache() && source.getCacheMode().isGetEnabled();
 
-        if (useCache) {
-            final SessionFactoryImplementor factory = source.getFactory();
-            final CacheKey ck = source.generateCacheKey(id, persister.getKeyType(), persister.getRole());
-            final Object ce = CacheHelper.fromSharedCache(source, ck, persister.getCacheAccessStrategy());
-            if (factory.getStatistics().isStatisticsEnabled()) {
-                if (ce == null) {
-                    factory.getStatisticsImplementor().secondLevelCacheMiss(
-                            persister.getCacheAccessStrategy().getRegion().getName());
-                } else {
-                    factory.getStatisticsImplementor().secondLevelCacheHit(
-                            persister.getCacheAccessStrategy().getRegion().getName());
-                }
-            }
+		if ( useCache ) {
+			final SessionFactoryImplementor factory = source.getFactory();
+			final CollectionDataAccess cache = persister.getCacheAccessStrategy();
+			final Object ck = cache.generateCacheKey(
+					id,
+					persister,
+					source.getFactory(),
+					source.getTenantIdentifier()
+			);
+			final Object ce = CacheHelper.fromSharedCache( source, ck, persister.getCacheAccessStrategy() );
+			if ( factory.getStatistics().isStatisticsEnabled() ) {
+				if ( ce == null ) {
+					factory.getStatistics().collectionCacheMiss(
+							persister.getNavigableRole(),
+							persister.getCacheAccessStrategy().getRegion().getName()
+					);
+				}
+				else {
+					factory.getStatistics().collectionCacheHit(
+							persister.getNavigableRole(),
+							persister.getCacheAccessStrategy().getRegion().getName()
+					);
+				}
+			}
 
-            if (ce != null) {
-                CollectionCacheEntry cacheEntry = (CollectionCacheEntry) persister.getCacheEntryStructure()
-                        .destructure(ce, factory);
+			if ( ce != null ) {
+				CollectionCacheEntry cacheEntry = (CollectionCacheEntry) persister.getCacheEntryStructure()
+						.destructure( ce, factory );
 
-                final PersistenceContext persistenceContext = source.getPersistenceContext();
-                cacheEntry.assemble(collection, persister, persistenceContext.getCollectionOwner(id, persister));
-                persistenceContext.getCollectionEntry(collection).postInitialize(collection);
-                return true;
-            }
+				final PersistenceContext persistenceContext = source.getPersistenceContext();
+				cacheEntry.assemble( collection, persister, persistenceContext.getCollectionOwner( id, persister ) );
+				persistenceContext.getCollectionEntry( collection ).postInitialize( collection );
+				return true;
+			}
 
-            return false;
-        }
+			return false;
+		}
 
-        return false;
-    }
+		return false;
+	}
 }

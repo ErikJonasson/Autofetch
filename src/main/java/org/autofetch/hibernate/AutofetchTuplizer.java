@@ -42,23 +42,8 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
 	}
 
 	@Override
-	protected ProxyFactory buildProxyFactory(PersistentClass persistentClass, Getter idGetter, Setter idSetter) {
-		final AutofetchService autofetchService = getFactory().getServiceRegistry()
-				.getService( AutofetchService.class );
-		final ExtentManager extentManager = autofetchService.getExtentManager();
-
-		final ReflectionOptimizer optimizer = this.getOptimizer( persistentClass.getMappedClass() );
-
-		return new AutofetchInstantiator(
-				persistentClass,
-				optimizer != null ? optimizer.getInstantiationOptimizer() : null,
-				extentManager
-		);
-	}
-
-	@Override
 	protected ProxyFactory buildProxyFactoryInternal(PersistentClass pc, Getter idGetter, Setter idSetter) {
-		return new AutofetchProxyFactory( pc );
+		return new AutofetchProxyFactory( pc, super.getEntityMetamodel().getSessionFactory() );
 	}
 
 	@Override
