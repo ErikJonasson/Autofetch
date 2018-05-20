@@ -3,17 +3,17 @@
  */
 package org.autofetch.test;
 
+import java.util.Map;
+
 import org.hibernate.Criteria;
 import org.hibernate.Hibernate;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.jpa.AvailableSettings;
 
-import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -28,7 +28,7 @@ import org.autofetch.hibernate.TraversalProfile;
  *
  * @author aibrahim
  */
-public class ExtentTest extends BaseCoreFunctionalTestCase {
+public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	// Number of subordinates for root object in createNObjectGraph
 	private static final int NUM_SUBORDINATES = 50;
@@ -723,16 +723,18 @@ public class ExtentTest extends BaseCoreFunctionalTestCase {
 	}
 
 	@Override
-	protected void afterSessionFactoryBuilt() {
+	protected void afterEntityManagerFactoryBuilt() {
 		this.em = serviceRegistry().getService( AutofetchService.class ).getExtentManager();
 	}
 
 	@Override
-	protected void prepareBasicRegistryBuilder(StandardServiceRegistryBuilder serviceRegistryBuilder) {
-		serviceRegistryBuilder
-				.applySetting( "hibernate.ejb.use_class_enhancer", true )
-				.applySetting( AvailableSettings.ENHANCER_ENABLE_DIRTY_TRACKING, true )
-				.applySetting( AvailableSettings.ENHANCER_ENABLE_LAZY_INITIALIZATION, true )
-				.applySetting( AvailableSettings.ENHANCER_ENABLE_ASSOCIATION_MANAGEMENT, true );
+	protected void addConfigOptions(Map options) {
+		options.put( AvailableSettings.ENHANCER_ENABLE_DIRTY_TRACKING, true );
+		options.put( AvailableSettings.ENHANCER_ENABLE_LAZY_INITIALIZATION, true );
+		options.put( AvailableSettings.ENHANCER_ENABLE_ASSOCIATION_MANAGEMENT, true );
+	}
+
+	private Session openSession() {
+		return super.createEntityManager().unwrap( Session.class );
 	}
 }
