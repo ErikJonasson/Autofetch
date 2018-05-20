@@ -25,13 +25,14 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.Setter;
 import org.hibernate.proxy.ProxyFactory;
+import org.hibernate.tuple.Instantiator;
 import org.hibernate.tuple.entity.EntityMetamodel;
 import org.hibernate.tuple.entity.PojoEntityTuplizer;
 import org.hibernate.type.ComponentType;
 
 /**
- * This class modifies the default hibernate POJO tuplizer to
- * instantiate entities that implement the TrackableEntity interface.
+ * This class modifies the default Hibernate POJO tuplizer to
+ * instantiate entities that implement the {@link TrackableEntity} interface.
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
@@ -39,6 +40,21 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
 
 	public AutofetchTuplizer(EntityMetamodel entityMetamodel, PersistentClass mappedEntity) {
 		super( entityMetamodel, mappedEntity );
+	}
+
+	@Override
+	protected Instantiator buildInstantiator(EntityMetamodel entityMetamodel, PersistentClass persistentClass) {
+		final AutofetchService autofetchService = getFactory().getServiceRegistry()
+				.getService( AutofetchService.class );
+
+		final ExtentManager extentManager = autofetchService.getExtentManager();
+		final ReflectionOptimizer optimizer = this.getOptimizer( persistentClass.getMappedClass() );
+		return new AutofetchInstantiator(
+				entityMetamodel,
+				persistentClass,
+				optimizer != null ? optimizer.getInstantiationOptimizer() : null,
+				extentManager
+		);
 	}
 
 	@Override

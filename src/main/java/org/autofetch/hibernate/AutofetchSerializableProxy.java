@@ -17,9 +17,9 @@ import java.lang.reflect.Method;
 import java.util.Set;
 
 import org.hibernate.HibernateException;
+import org.hibernate.proxy.AbstractLazyInitializer;
 import org.hibernate.proxy.AbstractSerializableProxy;
 import org.hibernate.proxy.HibernateProxy;
-import org.hibernate.proxy.pojo.javassist.JavassistLazyInitializer;
 import org.hibernate.type.CompositeType;
 
 public final class AutofetchSerializableProxy extends AbstractSerializableProxy {
@@ -101,12 +101,12 @@ public final class AutofetchSerializableProxy extends AbstractSerializableProxy 
 					null,
 					persistentProperties
 			);
-			setReadOnlyBeforeAttachedToSession( (JavassistLazyInitializer) proxy.getHibernateLazyInitializer() );
+			setReadOnlyBeforeAttachedToSession( (AbstractLazyInitializer) proxy.getHibernateLazyInitializer() );
 			return proxy;
 		}
 		catch (NoSuchMethodException nsme) {
 			throw new HibernateException(
-					"could not create autofetch serializable proxy for entity: " + getEntityName(),
+					"Could not create autofetch serializable proxy for entity: " + getEntityName(),
 					nsme
 			);
 		}

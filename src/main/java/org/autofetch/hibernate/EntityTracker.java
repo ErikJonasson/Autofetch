@@ -21,134 +21,134 @@ import java.util.Set;
 
 public class EntityTracker implements Serializable {
 
-    private boolean accessed = false;
+	private final Set<Statistics> trackers = new HashSet<>();
+	private boolean accessed = false;
+	private boolean tracking = true;
+	private Set<Property> persistentProperties;
+	private ExtentManager extentManager;
 
-    private boolean tracking = true;
+	public EntityTracker(
+			Set<Property> persistentProperties,
+			ExtentManager extentManager) {
+		this.persistentProperties = persistentProperties;
+		this.extentManager = extentManager;
+	}
 
-    private Set<Statistics> trackers = new HashSet<>();
+	public void trackAccess(Object entity) {
+		if ( tracking && !accessed ) {
+			this.accessed = true;
+			for ( Statistics tracker : trackers ) {
+				tracker.loadedAssociation();
+				extendProfile( tracker, entity );
+			}
+		}
+	}
 
-    private Set<Property> persistentProperties;
+	public void removeTracker(Statistics tracker) {
+		trackers.remove( tracker );
+	}
 
-    private ExtentManager extentManager;
+	public void extendProfile(Statistics tracker, Object entity) {
+		for ( Property prop : persistentProperties ) {
+			Object propVal = null;
+			try {
+				propVal = getPropertyValue( prop.getName(), entity );
+			}
+			catch (IllegalStateException e) {
+				if ( e.getCause() != null
+						&& e.getCause() instanceof NoSuchMethodException ) {
+					continue; // Weird property, just ignore it.
+				}
+			}
+			if ( propVal instanceof Trackable ) {
+				Trackable propEntity = (Trackable) propVal;
+				Statistics propTracker = extendTracker( tracker,
+														prop.getName(), prop.isCollection()
+				);
+				if ( propTracker != null ) {
+					propEntity.addTracker( propTracker );
+				}
+			}
+		}
+	}
 
-    public EntityTracker(
-            Set<Property> persistentProperties,
-            ExtentManager extentManager) {
-        this.persistentProperties = persistentProperties;
-        this.extentManager = extentManager;
-    }
+	private static final Class[] NO_CLASSSES = new Class[0];
 
-    public void trackAccess(Object entity) throws Throwable {
-        if (tracking && !accessed) {
-            this.accessed = true;
-            for (Statistics tracker : trackers) {
-                tracker.loadedAssociation();
-                extendProfile(tracker, entity);
-            }
-        }
-    }
+	private static final Object[] NO_OBJECTS = new Object[0];
 
-    public void removeTracker(Statistics tracker) {
-        trackers.remove(tracker);
-    }
+	private Object getPropertyValue(String propName, Object o) {
+		// Construct method name using the property name and
+		// convention for getters
+		// Uppercase first letter of prop
+		StringBuilder propCapitalized = new StringBuilder( propName );
 
-    public void extendProfile(Statistics tracker, Object entity) {
-        for (Property prop : persistentProperties) {
-            Object propVal = null;
-            try {
-                propVal = getPropertyValue(prop.getName(), entity);
-            } catch (IllegalStateException e) {
-                if (e.getCause() != null
-                        && e.getCause() instanceof NoSuchMethodException) {
-                    continue; // Weird property, just ignore it.
-                }
-            }
-            if (propVal instanceof Trackable) {
-                Trackable propEntity = (Trackable) propVal;
-                Statistics propTracker = extendTracker(tracker,
-                        prop.getName(), prop.isCollection());
-                if (propTracker != null) {
-                    propEntity.addTracker(propTracker);
-                }
-            }
-        }
-    }
+		String str = propCapitalized.toString().substring( propCapitalized.indexOf( "_" ) + 1 );
+		StringBuilder buildString = new StringBuilder( str );
+		String result = buildString.substring( 0, 1 ).toUpperCase() + buildString.substring( 1 );
+		String methodName = "get" + result;
+		try {
+			Method m = o.getClass().getMethod( methodName, NO_CLASSSES );
+			if ( !m.isAccessible() ) {
+				m.setAccessible( true );
+			}
+			return m.invoke( o, NO_OBJECTS );
+		}
+		catch (Exception e) {
+			throw new IllegalStateException( "Could not access property: "
+													 + propName + ":" + methodName, e );
+		}
+	}
 
-    private static final Class[] NO_CLASSSES = new Class[0];
+	/**
+	 * @param tracker
+	 * @param assoc
+	 * @param collection
+	 *
+	 * @return null if traversal profile could not be extended
+	 */
 
-    private static final Object[] NO_OBJECTS = new Object[0];
+	private Statistics extendTracker(Statistics tracker, String assoc, boolean collection) {
+		TraversalProfile parentNode = tracker.getProfileNode();
+		if ( !parentNode.hasSubProfile( assoc ) ) {
+			if ( !extentManager.addSubProfile( parentNode, assoc, collection ) ) {
+				return null;
+			}
+		}
 
-    private Object getPropertyValue(String propName, Object o) {
-        // Construct method name using the property name and
-        // convention for getters
-        // Uppercase first letter of prop
-        StringBuilder propCapitalized = new StringBuilder(propName);
+		Statistics newTracker = parentNode.getSubProfileStats( assoc );
+		newTracker.incrementTotal( 1 );
+		return newTracker;
+	}
 
-        String str = propCapitalized.toString().substring(propCapitalized.indexOf("_") + 1);
-        StringBuilder buildString = new StringBuilder(str);
-        String result = buildString.substring(0,1).toUpperCase() + buildString.substring(1);
-        String methodName = "get" + result;
-        try {
-            Method m = o.getClass().getMethod(methodName, NO_CLASSSES);
-            if (!m.isAccessible()) {
-                m.setAccessible(true);
-            }
-            return m.invoke(o, NO_OBJECTS);
-        } catch (Exception e) {
-            throw new IllegalStateException("Could not access property: "
-                    + propName + ":" + methodName, e);
-        }
-    }
+	public Set<Statistics> getTrackers() {
+		return trackers;
+	}
 
-    /**
-     * @param tracker
-     * @param assoc
-     * @param collection
-     * @return null if traversal profile could not be extended
-     */
+	public void addTracker(Statistics newTracker) {
+		trackers.add( newTracker );
+	}
 
-    private Statistics extendTracker(Statistics tracker, String assoc, boolean collection) {
-        TraversalProfile parentNode = tracker.getProfileNode();
-        if (!parentNode.hasSubProfile(assoc)) {
-            if (!extentManager.addSubProfile(parentNode, assoc, collection)) {
-                return null;
-            }
-        }
+	public void addTrackers(Set<Statistics> newTrackers) {
+		trackers.addAll( newTrackers );
+	}
 
-        Statistics newTracker = parentNode.getSubProfileStats(assoc);
-        newTracker.incrementTotal(1);
-        return newTracker;
-    }
+	public Set<Property> getPersistentProperties() {
+		return persistentProperties;
+	}
 
-    public Set<Statistics> getTrackers() {
-        return trackers;
-    }
+	public void setPersistentProperties(Set<Property> persistentProperties) {
+		this.persistentProperties = persistentProperties;
+	}
 
-    public void addTracker(Statistics newTracker) {
-        trackers.add(newTracker);
-    }
+	public boolean isTracking() {
+		return tracking;
+	}
 
-    public void addTrackers(Set<Statistics> newTrackers) {
-        trackers.addAll(newTrackers);
-    }
+	public void setTracking(boolean tracking) {
+		this.tracking = tracking;
+	}
 
-    public Set<Property> getPersistentProperties() {
-        return persistentProperties;
-    }
-
-    public void setPersistentProperties(Set<Property> persistentProperties) {
-        this.persistentProperties = persistentProperties;
-    }
-
-    public boolean isTracking() {
-        return tracking;
-    }
-
-    public void setTracking(boolean tracking) {
-        this.tracking = tracking;
-    }
-
-    public boolean isAccessed() {
-        return accessed;
-    }
+	public boolean isAccessed() {
+		return accessed;
+	}
 }

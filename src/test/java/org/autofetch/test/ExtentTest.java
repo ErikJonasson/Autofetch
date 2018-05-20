@@ -3,18 +3,17 @@
  */
 package org.autofetch.test;
 
-import java.util.Map;
-
 import org.hibernate.Criteria;
 import org.hibernate.Hibernate;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.Query;
 import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.jpa.AvailableSettings;
 
+import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,7 +28,7 @@ import org.autofetch.hibernate.TraversalProfile;
  *
  * @author aibrahim
  */
-public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
+public class ExtentTest extends BaseCoreFunctionalTestCase {
 
 	// Number of subordinates for root object in createNObjectGraph
 	private static final int NUM_SUBORDINATES = 50;
@@ -37,8 +36,6 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 	private static final int NUM_FRIENDS = 2;
 
 	private ExtentManager em;
-
-	private SessionFactory sf;
 
 	@Test
 	public void testSimpleLoad() {
@@ -507,7 +504,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void mentorAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getMentor().getName() );
@@ -518,17 +515,17 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void friendAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
-			Assert.assertNotEquals( 0, , dave.getFriends().size() );
+			Assert.assertNotEquals( 0, dave.getFriends().size() );
 			tx.commit();
 		}
 	}
 
 	private void secondLevelSupervisorAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getSupervisor() );
@@ -539,7 +536,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void supervisorAndMentorAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getSupervisor().getName() );
@@ -551,7 +548,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee someAccess(boolean traverse) {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getName() );
@@ -568,7 +565,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee someAccessCriteria(boolean traverse) {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Criteria crit = new AutofetchCriteria( sess.createCriteria( Employee.class ) );
 			crit.add( Restrictions.eq( "id", daveId ) );
@@ -587,9 +584,9 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee initializeCollectionAccess(boolean traverse) {
 		Long daveId = createObjectGraph( false );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
-			Query q = sess.createQuery( "from Employee e where e.id = :id" );
+			Query q = sess.createQuery( "select e from Employee e where e.id = :id" );
 			q.setParameter( "id", daveId );
 			Employee dave = (Employee) q.uniqueResult();
 			Assert.assertNotNull( dave.getName() );
@@ -606,7 +603,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee multipleCollectionAccess(boolean traverse) {
 		Long daveId = createObjectGraph( false );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getName() );
@@ -624,7 +621,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee multipleCollectionAccessCriteria(boolean traverse) {
 		Long daveId = createObjectGraph( false );
-		try (Session sess = openSession();) {
+		try (Session sess = openSession()) {
 			Transaction tx = sess.beginTransaction();
 			Criteria crit = new AutofetchCriteria( sess.createCriteria( Employee.class ) );
 			crit.add( Restrictions.eq( "id", daveId ) );
@@ -726,18 +723,16 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 	}
 
 	@Override
-	protected void afterEntityManagerFactoryBuilt() {
+	protected void afterSessionFactoryBuilt() {
 		this.em = serviceRegistry().getService( AutofetchService.class ).getExtentManager();
 	}
 
 	@Override
-	protected void addConfigOptions(Map options) {
-		options.put( AvailableSettings.ENHANCER_ENABLE_DIRTY_TRACKING, true );
-		options.put( AvailableSettings.ENHANCER_ENABLE_LAZY_INITIALIZATION, true );
-		options.put( AvailableSettings.ENHANCER_ENABLE_ASSOCIATION_MANAGEMENT, true );
-	}
-
-	private Session openSession() {
-		return super.createEntityManager().unwrap( Session.class );
+	protected void prepareBasicRegistryBuilder(StandardServiceRegistryBuilder serviceRegistryBuilder) {
+		serviceRegistryBuilder
+				.applySetting( "hibernate.ejb.use_class_enhancer", true )
+				.applySetting( AvailableSettings.ENHANCER_ENABLE_DIRTY_TRACKING, true )
+				.applySetting( AvailableSettings.ENHANCER_ENABLE_LAZY_INITIALIZATION, true )
+				.applySetting( AvailableSettings.ENHANCER_ENABLE_ASSOCIATION_MANAGEMENT, true );
 	}
 }

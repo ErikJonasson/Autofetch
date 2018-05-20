@@ -14,8 +14,11 @@
  */
 package org.autofetch.hibernate;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.hibernate.FlushMode;
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
@@ -24,13 +27,10 @@ import org.hibernate.Session;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.event.internal.DefaultLoadEventListener;
 import org.hibernate.event.spi.LoadEvent;
-import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class extends the hibernate default event listener to add prefetch
@@ -40,82 +40,96 @@ import java.util.Map;
  */
 public class AutofetchLoadListener extends DefaultLoadEventListener {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    private static final Log log = LogFactory.getLog(AutofetchLoadListener.class);
+	private static final Logger log = LoggerFactory.getLogger( AutofetchLoadListener.class );
 
-    private final ExtentManager extentManager;
+	private final ExtentManager extentManager;
 
-    public AutofetchLoadListener(ExtentManager extentManager) {
-        this.extentManager = extentManager;
-    }
+	public AutofetchLoadListener(ExtentManager extentManager) {
+		this.extentManager = extentManager;
+	}
 
-    @Override
-    protected Object loadFromDatasource(LoadEvent event,
-                                        EntityPersister entityPersister, EntityKey entityKey,
-                                        LoadType loadType) throws HibernateException {
+	@Override
+	public void onLoad(LoadEvent event, LoadType loadType) throws HibernateException {
+		super.onLoad( event, loadType );
+	}
 
-        String classname = entityPersister.getEntityName();
-        if (log.isDebugEnabled()) {
-            log.debug("Entity id: " + event.getEntityId());
-        }
+	@Override
+	protected Object loadFromSessionCache(
+			LoadEvent event,
+			EntityKey entityKey,
+			LoadType loadType) throws HibernateException {
 
-        List<Path> prefetchPaths = extentManager.getPrefetchPaths(classname);
+		String classname = event.getEntityClassName();
+		if ( log.isDebugEnabled() ) {
+			log.debug( "Entity id: {}", event.getEntityId() );
+		}
 
-        Object result;
-        if (!prefetchPaths.isEmpty()) {
-            result = getResult(prefetchPaths, classname, event.getEntityId(), event.getLockMode(), event.getSession());
-            if (result instanceof HibernateProxy) {
-                HibernateProxy proxy = (HibernateProxy) result;
-                if (proxy.getHibernateLazyInitializer().isUninitialized()) {
-                    throw new IllegalStateException("proxy uninitialized");
-                }
-                result = proxy.getHibernateLazyInitializer().getImplementation();
-            }
-        } else {
-            result = super.loadFromDatasource(event, entityPersister, entityKey, loadType);
-        }
+		List<Path> prefetchPaths = extentManager.getPrefetchPaths( classname );
 
-        extentManager.markAsRoot(result, classname);
+		Object result;
+		if ( !prefetchPaths.isEmpty() ) {
+			result = getResult(
+					prefetchPaths,
+					classname,
+					event.getEntityId(),
+					event.getLockMode(),
+					event.getSession()
+			);
+			if ( result instanceof HibernateProxy ) {
+				HibernateProxy proxy = (HibernateProxy) result;
+				if ( proxy.getHibernateLazyInitializer().isUninitialized() ) {
+					throw new IllegalStateException( "proxy uninitialized" );
+				}
+				result = proxy.getHibernateLazyInitializer().getImplementation();
+			}
+		}
+		else {
+			result = super.loadFromSessionCache( event, entityKey, loadType );
+		}
 
-        return result;
-    }
+		extentManager.markAsRoot( result, classname );
 
-    public static Object getResult(List<Path> prefetchPaths, String classname,
-                                   Serializable id, LockMode lm, Session sess) {
-        StringBuilder queryStr = new StringBuilder();
-        queryStr.append("from ").append(classname).append(" entity");
-        Map<Path, String> pathAliases = new HashMap<>();
-        int aliasCnt = 0;
-        pathAliases.put(new Path(), "entity");
+		return result;
+	}
 
-        // Assumes prefetchPaths is ordered such larger paths appear after smaller ones.
-        // Also assumes all prefixes of a path are present except the empty prefix.
-        for (Path p : prefetchPaths) {
-            String oldAlias = pathAliases.get(p.removeLastTraversal());
-            String newAlias = "af" + (aliasCnt++);
-            String lastField = p.traversals().get(p.size() - 1);
-            pathAliases.put(p, newAlias);
-            queryStr.append(" left outer join fetch ");
-            queryStr.append(oldAlias).append(".").append(lastField).append(" ").append(newAlias);
-        }
-        queryStr.append(" where entity.id = :id");
+	static Object getResult(
+			List<Path> prefetchPaths, String classname,
+			Serializable id, LockMode lm, Session sess) {
+		StringBuilder queryStr = new StringBuilder();
+		queryStr.append( "from " ).append( classname ).append( " entity" );
+		Map<Path, String> pathAliases = new HashMap<>();
+		int aliasCnt = 0;
+		pathAliases.put( new Path(), "entity" );
 
-        if (log.isDebugEnabled()) {
-            log.debug("Query: " + queryStr);
-        }
+		// Assumes prefetchPaths is ordered such larger paths appear after smaller ones.
+		// Also assumes all prefixes of a path are present except the empty prefix.
+		for ( Path p : prefetchPaths ) {
+			String oldAlias = pathAliases.get( p.removeLastTraversal() );
+			String newAlias = "af" + ( aliasCnt++ );
+			String lastField = p.traversals().get( p.size() - 1 );
+			pathAliases.put( p, newAlias );
+			queryStr.append( " left outer join fetch " );
+			queryStr.append( oldAlias ).append( "." ).append( lastField ).append( " " ).append( newAlias );
+		}
+		queryStr.append( " where entity.id = :id" );
 
-        Query q = sess.createQuery(queryStr.toString());
-        q.setLockMode("entity", lm);
-        q.setFlushMode(FlushMode.MANUAL);
-        q.setParameter("id", id);
+		if ( log.isDebugEnabled() ) {
+			log.debug( "Query: " + queryStr );
+		}
 
-        long startTimeMillis = System.currentTimeMillis();
-        Object o = q.uniqueResult();
-        if (log.isDebugEnabled()) {
-            log.debug("Query execution time: " +
-                    (System.currentTimeMillis() - startTimeMillis));
-        }
-        return o;
-    }
+		Query q = sess.createQuery( queryStr.toString() );
+		q.setLockMode( "entity", lm );
+		q.setFlushMode( FlushMode.MANUAL );
+		q.setParameter( "id", id );
+
+		long startTimeMillis = System.currentTimeMillis();
+		Object o = q.uniqueResult();
+		if ( log.isDebugEnabled() ) {
+			log.debug( "Query execution time: " +
+							   ( System.currentTimeMillis() - startTimeMillis ) );
+		}
+		return o;
+	}
 }
