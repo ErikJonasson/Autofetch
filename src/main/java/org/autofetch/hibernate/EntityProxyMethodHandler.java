@@ -23,6 +23,7 @@ import org.hibernate.proxy.ProxyConfiguration;
 
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
 import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.implementation.bind.annotation.This;
 
 public class EntityProxyMethodHandler extends PassThroughInterceptor
@@ -40,9 +41,10 @@ public class EntityProxyMethodHandler extends PassThroughInterceptor
 	}
 
 	@Override
-	public Object intercept(@This Object instance, @Origin Method method, @AllArguments Object[] args)
+	@RuntimeType
+	public Object intercept(@This Object instance, @Origin Method method, @AllArguments Object[] arguments)
 			throws Exception {
-		if ( args.length == 0 ) {
+		if ( arguments.length == 0 ) {
 			switch ( method.getName() ) {
 				case "disableTracking": {
 					boolean oldValue = entityTracker.isTracking();
@@ -58,30 +60,30 @@ public class EntityProxyMethodHandler extends PassThroughInterceptor
 					return entityTracker.isAccessed();
 			}
 		}
-		else if ( args.length == 1 ) {
+		else if ( arguments.length == 1 ) {
 			if ( method.getName().equals( "addTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
-				entityTracker.addTracker( (Statistics) args[0] );
+				entityTracker.addTracker( (Statistics) arguments[0] );
 				return null;
 			}
 			else if ( method.getName().equals( "addTrackers" ) && method.getParameterTypes()[0].equals( Set.class ) ) {
 				@SuppressWarnings("unchecked")
-				Set<Statistics> newTrackers = (Set) args[0];
+				Set<Statistics> newTrackers = (Set) arguments[0];
 				entityTracker.addTrackers( newTrackers );
 				return null;
 			}
 			else if ( method.getName()
 					.equals( "extendProfile" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
-				entityTracker.extendProfile( (Statistics) args[0], instance );
+				entityTracker.extendProfile( (Statistics) arguments[0], instance );
 				return null;
 			}
 			else if ( method.getName()
 					.equals( "removeTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
-				entityTracker.removeTracker( (Statistics) args[0] );
+				entityTracker.removeTracker( (Statistics) arguments[0] );
 				return null;
 			}
 		}
 
 		entityTracker.trackAccess( instance );
-		return super.intercept( instance, method, args );
+		return super.intercept( instance, method, arguments );
 	}
 }

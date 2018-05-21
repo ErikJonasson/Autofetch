@@ -59,7 +59,7 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
 
 	@Override
 	protected ProxyFactory buildProxyFactoryInternal(PersistentClass pc, Getter idGetter, Setter idSetter) {
-		return new AutofetchProxyFactory( pc, super.getEntityMetamodel().getSessionFactory() );
+		return new AutofetchProxyFactory( pc );
 	}
 
 	@Override

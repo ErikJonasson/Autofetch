@@ -19,10 +19,9 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.hibernate.HibernateException;
-import org.hibernate.bytecode.spi.BasicProxyFactory;
-import org.hibernate.cfg.Environment;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.proxy.HibernateProxy;
@@ -36,27 +35,25 @@ import org.hibernate.type.CompositeType;
  */
 public class AutofetchProxyFactory implements ProxyFactory {
 
-	private static final Class[] NO_CLASSES = new Class[0];
-	private final PersistentClass pc;
-	private final SessionFactoryImplementor sessionFactoryImplementor;
+	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( AutofetchProxyFactory.class );
 
-	private Class persistentClass;
+	private static final Class<?>[] NO_CLASSES = new Class<?>[0];
+
+	private Class<?> proxiedClass;
 	private String entityName;
-	private Class[] interfaces;
+	private Class<?>[] interfaces;
 	private Method getIdentifierMethod;
 	private Method setIdentifierMethod;
 	private CompositeType componentIdType;
-	private BasicProxyFactory factory;
 
 	private Set<org.autofetch.hibernate.Property> persistentProperties;
 
-	public AutofetchProxyFactory(PersistentClass pc, SessionFactoryImplementor sessionFactoryImplementor) {
-		this.pc = pc;
-		this.sessionFactoryImplementor = sessionFactoryImplementor;
+	public AutofetchProxyFactory(PersistentClass persistentClass) {
+		this.proxiedClass = persistentClass.getMappedClass();
 		this.persistentProperties = new HashSet<>();
 
 		@SuppressWarnings("unchecked")
-		Iterator<Property> propIter = pc.getPropertyClosureIterator();
+		Iterator<Property> propIter = (Iterator<Property>) persistentClass.getPropertyClosureIterator();
 		while ( propIter.hasNext() ) {
 			this.persistentProperties.add( new org.autofetch.hibernate.Property( propIter.next() ) );
 		}
@@ -73,29 +70,25 @@ public class AutofetchProxyFactory implements ProxyFactory {
 			CompositeType componentIdType) throws HibernateException {
 
 		this.entityName = entityName;
-		this.persistentClass = persistentClass;
-		this.interfaces = (Class[]) interfaces.toArray( NO_CLASSES );
+		this.proxiedClass = persistentClass;
+		this.interfaces = (Class<?>[]) interfaces.toArray( NO_CLASSES );
 		this.getIdentifierMethod = getIdentifierMethod;
 		this.setIdentifierMethod = setIdentifierMethod;
 		this.componentIdType = componentIdType;
-		this.factory = Environment.getBytecodeProvider().getProxyFactoryFactory()
-				.buildBasicProxyFactory( persistentClass, this.interfaces );
 	}
 
 	@Override
-	public HibernateProxy getProxy(
-			Serializable serializable, SharedSessionContractImplementor sharedSessionContractImplementor)
+	public HibernateProxy getProxy(Serializable id, SharedSessionContractImplementor session)
 			throws HibernateException {
 		return AutofetchLazyInitializer.getProxy(
-				factory,
 				entityName,
-				persistentClass,
+				proxiedClass,
 				interfaces,
 				getIdentifierMethod,
 				setIdentifierMethod,
 				componentIdType,
-				serializable,
-				sharedSessionContractImplementor,
+				id,
+				session,
 				persistentProperties
 		);
 	}
