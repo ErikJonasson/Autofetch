@@ -12,330 +12,370 @@
  */
 package org.autofetch.hibernate;
 
-import javassist.util.proxy.MethodFilter;
-import javassist.util.proxy.MethodHandler;
-import javassist.util.proxy.Proxy;
-import javassist.util.proxy.ProxyFactory;
-import org.hibernate.HibernateException;
-import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.internal.CoreLogging;
-import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.util.ReflectHelper;
-import org.hibernate.proxy.HibernateProxy;
-import org.hibernate.proxy.pojo.BasicLazyInitializer;
-import org.hibernate.proxy.pojo.javassist.JavassistLazyInitializer;
-import org.hibernate.type.CompositeType;
-
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Set;
 
+import org.hibernate.HibernateException;
+import org.hibernate.bytecode.internal.bytebuddy.PassThroughInterceptor;
+import org.hibernate.bytecode.spi.BasicProxyFactory;
+import org.hibernate.cfg.Environment;
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.util.ReflectHelper;
+import org.hibernate.proxy.HibernateProxy;
+import org.hibernate.proxy.ProxyConfiguration;
+import org.hibernate.proxy.pojo.BasicLazyInitializer;
+import org.hibernate.type.CompositeType;
+
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
+import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
+import net.bytebuddy.implementation.bind.annotation.This;
+
 /**
- * This class is based on {@link JavassistLazyInitializer}.
+ * This class is based on {@link org.hibernate.proxy.pojo.javassist.JavassistLazyInitializer}.
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
-public class AutofetchLazyInitializer extends BasicLazyInitializer implements MethodHandler {
+public class AutofetchLazyInitializer extends BasicLazyInitializer {
 
-    private static final CoreMessageLogger LOG = CoreLogging.messageLogger(AutofetchLazyInitializer.class);
+	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( AutofetchLazyInitializer.class );
 
-    private final EntityTracker entityTracker;
+	private final EntityTracker entityTracker;
 
-    private final Class[] interfaces;
+	private final Class[] interfaces;
 
-    private boolean entityTrackersSet;
+	private boolean entityTrackersSet;
 
-    private boolean constructed;
+	private boolean constructed;
 
-    private AutofetchLazyInitializer(String entityName,
-                                     Class persistentClass,
-                                     Class[] interfaces,
-                                     Serializable id,
-                                     Method getIdentifierMethod,
-                                     Method setIdentifierMethod,
-                                     CompositeType componentIdType,
-                                     SessionImplementor session,
-                                     Set<Property> persistentProperties,
-                                     boolean classOverridesEquals) {
+	private AutofetchLazyInitializer(
+			String entityName,
+			Class persistentClass,
+			Class[] interfaces,
+			Serializable id,
+			Method getIdentifierMethod,
+			Method setIdentifierMethod,
+			CompositeType componentIdType,
+			SharedSessionContractImplementor session,
+			Set<Property> persistentProperties,
+			boolean classOverridesEquals) {
 
-        super(entityName, persistentClass, id, getIdentifierMethod, setIdentifierMethod,
-                componentIdType, session, classOverridesEquals);
+		super( entityName, persistentClass, id, getIdentifierMethod, setIdentifierMethod,
+			   componentIdType, session, classOverridesEquals
+		);
 
-        this.interfaces = interfaces;
+		this.interfaces = interfaces;
 
-        AutofetchService autofetchService = session.getFactory().getServiceRegistry().getService(AutofetchService.class);
-        this.entityTracker = new EntityTracker(persistentProperties, autofetchService.getExtentManager());
-        this.entityTrackersSet = false;
-    }
+		AutofetchService autofetchService = session.getFactory()
+				.getServiceRegistry()
+				.getService( AutofetchService.class );
+		this.entityTracker = new EntityTracker( persistentProperties, autofetchService.getExtentManager() );
+		this.entityTrackersSet = false;
+	}
 
-    @Override
-    public Object invoke(final Object proxy, final Method thisMethod, final Method proceed, final Object[] args) throws Throwable {
-        if (this.constructed) {
-            Object result;
-            try {
-                result = this.invoke(thisMethod, args, proxy);
-            } catch (Throwable t) {
-                throw new Exception(t.getCause());
-            }
+	@Override
+	protected Object serializableProxy() {
+		return new AutofetchSerializableProxy(
+				getEntityName(),
+				this.persistentClass,
+				this.interfaces,
+				getIdentifier(),
+				( isReadOnlySettingAvailable() ?
+						Boolean.valueOf( isReadOnly() ) :
+						isReadOnlyBeforeAttachedToSession() ),
+				this.getIdentifierMethod,
+				this.setIdentifierMethod,
+				this.componentIdType,
+				this.entityTracker.getPersistentProperties()
+		);
+	}
 
-            if (result == INVOKE_IMPLEMENTATION) {
-                if (args.length == 0) {
-                    switch (thisMethod.getName()) {
-                        case "enableTracking":
-                            return handleEnableTracking();
-                        case "disableTracking":
-                            return handleDisableTracking();
-                        case "isAccessed":
-                            return entityTracker.isAccessed();
-                    }
-                } else if (args.length == 1) {
-                    if (thisMethod.getName().equals("addTracker") && thisMethod.getParameterTypes()[0].equals(Statistics.class)) {
-                        return handleAddTracked(args[0]);
-                    } else if (thisMethod.getName().equals("addTrackers") && thisMethod.getParameterTypes()[0].equals(Set.class)) {
-                        return handleAddTrackers(args[0]);
-                    } else if (thisMethod.getName().equals("removeTracker") && thisMethod.getParameterTypes()[0].equals(Statistics.class)) {
-                        entityTracker.removeTracker((Statistics) args[0]);
-                        return handleRemoveTracker(args);
-                    } else if (thisMethod.getName().equals("extendProfile") && thisMethod.getParameterTypes()[0].equals(Statistics.class)) {
-                        return extendProfile(args);
-                    }
-                }
+	public static HibernateProxy getProxy(
+			final String entityName,
+			final Class persistentClass,
+			final Class[] interfaces,
+			final Method getIdentifierMethod,
+			final Method setIdentifierMethod,
+			final CompositeType componentIdType,
+			final Serializable id,
+			final SessionImplementor session,
+			final Set<Property> persistentProperties) throws HibernateException {
 
-                final Object target = getImplementation();
-                final Object returnValue;
+		// note: interface is assumed to already contain HibernateProxy.class
+		try {
+			final AutofetchLazyInitializer lazyInitializer = new AutofetchLazyInitializer(
+					entityName,
+					persistentClass,
+					interfaces,
+					id,
+					getIdentifierMethod,
+					setIdentifierMethod,
+					componentIdType,
+					session,
+					persistentProperties,
+					ReflectHelper.overridesEquals( persistentClass )
+			);
+			final HibernateProxy proxy = (HibernateProxy) Environment.getBytecodeProvider().getProxyFactoryFactory()
+					.buildBasicProxyFactory( interfaces.length == 1 ? persistentClass : null, interfaces )
+					.getProxy();
+			final Interceptor interceptor = new Interceptor( proxy, entityName, lazyInitializer );
+			( (ProxyConfiguration) proxy ).$$_hibernate_set_interceptor( interceptor );
+			lazyInitializer.constructed = true;
+			return proxy;
+		}
+		catch (Throwable t) {
+			final String message = LOG.bytecodeEnhancementFailed( entityName );
+			LOG.error( message, t );
+			throw new HibernateException( message, t );
+		}
+	}
 
-                try {
-                    if (ReflectHelper.isPublic(persistentClass, thisMethod)) {
-                        if (!thisMethod.getDeclaringClass().isInstance(target)) {
-                            throw new ClassCastException(
-                                    target.getClass().getName() + " incompatible with " + thisMethod.getDeclaringClass().getName()
-                            );
-                        }
-                    } else {
-                        thisMethod.setAccessible(true);
-                    }
+	public static HibernateProxy getProxy(
+			final BasicProxyFactory factory,
+			final String entityName,
+			final Class persistentClass,
+			final Class[] interfaces,
+			final Method getIdentifierMethod,
+			final Method setIdentifierMethod,
+			final CompositeType componentIdType,
+			final Serializable id,
+			final SharedSessionContractImplementor session,
+			final Set<Property> persistentProperties) throws HibernateException {
 
-                    returnValue = thisMethod.invoke(target, args);
-                    if (returnValue == target) {
-                        if (returnValue.getClass().isInstance(proxy)) {
-                            return proxy;
-                        } else {
-                            LOG.narrowingProxy(returnValue.getClass());
-                        }
-                    }
+		// note: interfaces is assumed to already contain HibernateProxy.class
+		final AutofetchLazyInitializer lazyInitializer = new AutofetchLazyInitializer(
+				entityName,
+				persistentClass,
+				interfaces,
+				id,
+				getIdentifierMethod,
+				setIdentifierMethod,
+				componentIdType,
+				session,
+				persistentProperties,
+				ReflectHelper.overridesEquals( persistentClass )
+		);
 
-                    return returnValue;
-                } catch (InvocationTargetException ite) {
-                    throw ite.getTargetException();
-                } finally {
-                    if (!entityTrackersSet && target instanceof Trackable) {
-                        entityTrackersSet = true;
-                        Trackable entity = (Trackable) target;
-                        entity.addTrackers(entityTracker.getTrackers());
-                        if (entityTracker.isTracking()) {
-                            entity.enableTracking();
-                        } else {
-                            entity.disableTracking();
-                        }
-                    }
-                }
-            } else {
-                return result;
-            }
-        } else {
-            // while constructor is running
-            if (thisMethod.getName().equals("getHibernateLazyInitializer")) {
-                return this;
-            } else {
-                return proceed.invoke(proxy, args);
-            }
-        }
-    }
+		final HibernateProxy proxy;
+		try {
+			proxy = (HibernateProxy) factory.getProxy();
+		}
+		catch (Exception e) {
+			throw new HibernateException( "Bytecode Enhancement failed: " + persistentClass.getName(), e );
+		}
 
-    private Object handleDisableTracking() {
-        boolean oldValue = entityTracker.isTracking();
-        this.entityTracker.setTracking(false);
-        if (!isUninitialized()) {
-            Object o = getImplementation();
-            if (o instanceof Trackable) {
-                Trackable entity = (Trackable) o;
-                entity.disableTracking();
-            }
-        }
+		final Interceptor interceptor = new Interceptor( proxy, entityName, lazyInitializer );
+		( (ProxyConfiguration) proxy ).$$_hibernate_set_interceptor( interceptor );
+		lazyInitializer.constructed = true;
 
-        return oldValue;
-    }
+		return proxy;
+	}
 
-    private Object handleEnableTracking() {
-        boolean oldValue = this.entityTracker.isTracking();
-        this.entityTracker.setTracking(true);
+	private static class Interceptor extends PassThroughInterceptor {
 
-        if (!isUninitialized()) {
-            Object o = getImplementation();
-            if (o instanceof Trackable) {
-                Trackable entity = (Trackable) o;
-                entity.enableTracking();
-            }
-        }
+		private final AutofetchLazyInitializer lazyInitializer;
 
-        return oldValue;
-    }
+		Interceptor(
+				Object proxiedObject,
+				String proxiedClassName,
+				AutofetchLazyInitializer lazyInitializer) {
+			super( proxiedObject, proxiedClassName );
 
-    private Object extendProfile(Object[] params) {
-        if (!isUninitialized()) {
-            Object o = getImplementation();
-            if (o instanceof TrackableEntity) {
-                TrackableEntity entity = (TrackableEntity) o;
-                entity.extendProfile((Statistics) params[0]);
-            }
-        } else {
-            throw new IllegalStateException("Can't call extendProfile on unloaded self.");
-        }
+			this.lazyInitializer = lazyInitializer;
+		}
 
-        return null;
-    }
+		@Override
+		@RuntimeType
+		public Object intercept(@This Object instance, @Origin Method method, @AllArguments Object[] arguments)
+				throws Exception {
+			final String methodName = method.getName();
 
-    private Object handleRemoveTracker(Object[] params) {
-        if (!isUninitialized()) {
-            Object o = getImplementation();
-            if (o instanceof Trackable) {
-                Trackable entity = (Trackable) o;
-                entity.removeTracker((Statistics) params[0]);
-            }
-        }
-        return null;
-    }
+			if ( lazyInitializer.constructed ) {
+				Object result;
+				try {
+					result = lazyInitializer.invoke( method, arguments, instance );
+				}
+				catch (Throwable t) {
+					throw new Exception( t.getCause() );
+				}
 
-    @SuppressWarnings("unchecked")
-    private Object handleAddTrackers(Object param) {
-        Set<Statistics> newTrackers = (Set<Statistics>) param;
-        this.entityTracker.addTrackers(newTrackers);
-        if (!isUninitialized()) {
-            Object o = getImplementation();
-            if (o instanceof Trackable) {
-                Trackable entity = (Trackable) o;
-                entity.addTrackers(newTrackers);
-            }
-        }
+				if ( result == INVOKE_IMPLEMENTATION ) {
+					if ( arguments.length == 0 ) {
+						switch ( methodName ) {
+							case "enableTracking":
+								return handleEnableTracking();
+							case "disableTracking":
+								return handleDisableTracking();
+							case "isAccessed":
+								return lazyInitializer.entityTracker.isAccessed();
+						}
+					}
+					else if ( arguments.length == 1 ) {
+						if ( methodName.equals( "addTracker" ) && method.getParameterTypes()[0].equals(
+								Statistics.class ) ) {
+							return handleAddTracked( arguments[0] );
+						}
+						else if ( methodName.equals( "addTrackers" ) && method.getParameterTypes()[0].equals(
+								Set.class ) ) {
+							return handleAddTrackers( arguments[0] );
+						}
+						else if ( methodName
+								.equals( "removeTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
+							lazyInitializer.entityTracker.removeTracker( (Statistics) arguments[0] );
+							return handleRemoveTracker( arguments );
+						}
+						else if ( methodName
+								.equals( "extendProfile" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
+							return extendProfile( arguments );
+						}
+					}
 
-        return null;
-    }
+					final Object target = lazyInitializer.getImplementation();
+					final Object returnValue;
 
-    private Object handleAddTracked(Object param) {
-        this.entityTracker.addTracker((Statistics) param);
-        if (!isUninitialized()) {
-            Object o = getImplementation();
-            if (o instanceof Trackable) {
-                Trackable entity = (Trackable) o;
-                entity.addTracker((Statistics) param);
-            }
-        }
+					try {
+						if ( ReflectHelper.isPublic( lazyInitializer.persistentClass, method ) ) {
+							if ( !method.getDeclaringClass().isInstance( target ) ) {
+								throw new ClassCastException(
+										target.getClass().getName() + " incompatible with " + method.getDeclaringClass()
+												.getName()
+								);
+							}
+						}
+						else {
+							method.setAccessible( true );
+						}
 
-        return null;
-    }
+						returnValue = method.invoke( target, arguments );
+						if ( returnValue == target ) {
+							if ( returnValue.getClass().isInstance( instance ) ) {
+								return instance;
+							}
+							else {
+								LOG.narrowingProxy( returnValue.getClass() );
+							}
+						}
 
-    @Override
-    protected Object serializableProxy() {
-        return new AutofetchSerializableProxy(
-                getEntityName(),
-                this.persistentClass,
-                this.interfaces,
-                getIdentifier(),
-                (isReadOnlySettingAvailable() ? Boolean.valueOf(isReadOnly()) : isReadOnlyBeforeAttachedToSession()),
-                this.getIdentifierMethod,
-                this.setIdentifierMethod,
-                this.componentIdType,
-                this.entityTracker.getPersistentProperties()
-        );
-    }
+						return returnValue;
+					}
+					catch (InvocationTargetException ite) {
+						throw new RuntimeException( ite.getTargetException() );
+					}
+					finally {
+						if ( !lazyInitializer.entityTrackersSet && target instanceof Trackable ) {
+							lazyInitializer.entityTrackersSet = true;
+							Trackable entity = (Trackable) target;
+							entity.addTrackers( lazyInitializer.entityTracker.getTrackers() );
+							if ( lazyInitializer.entityTracker.isTracking() ) {
+								entity.enableTracking();
+							}
+							else {
+								entity.disableTracking();
+							}
+						}
+					}
+				}
+				else {
+					return result;
+				}
+			}
+			else {
+				// while constructor is running
+				if ( methodName.equals( "getHibernateLazyInitializer" ) ) {
+					return this;
+				}
+				else {
+					return super.intercept( instance, method, arguments );
+				}
+			}
+		}
 
-    public static HibernateProxy getProxy(
-            final String entityName,
-            final Class persistentClass,
-            final Class[] interfaces,
-            final Method getIdentifierMethod,
-            final Method setIdentifierMethod,
-            final CompositeType componentIdType,
-            final Serializable id,
-            final SessionImplementor session,
-            final Set<Property> persistentProperties) throws HibernateException {
+		private Object handleDisableTracking() {
+			boolean oldValue = lazyInitializer.entityTracker.isTracking();
+			this.lazyInitializer.entityTracker.setTracking( false );
+			if ( !lazyInitializer.isUninitialized() ) {
+				Object o = lazyInitializer.getImplementation();
+				if ( o instanceof Trackable ) {
+					Trackable entity = (Trackable) o;
+					entity.disableTracking();
+				}
+			}
 
-        // note: interface is assumed to already contain HibernateProxy.class
-        try {
-            final AutofetchLazyInitializer instance = new AutofetchLazyInitializer(
-                    entityName,
-                    persistentClass,
-                    interfaces,
-                    id,
-                    getIdentifierMethod,
-                    setIdentifierMethod,
-                    componentIdType,
-                    session,
-                    persistentProperties,
-                    ReflectHelper.overridesEquals(persistentClass)
-            );
+			return oldValue;
+		}
 
-            final ProxyFactory factory = new ProxyFactory();
-            factory.setSuperclass(interfaces.length == 1 ? persistentClass : null);
-            factory.setInterfaces(interfaces);
-            factory.setFilter(FINALIZE_FILTER);
-            Class cl = factory.createClass();
-            final HibernateProxy proxy = (HibernateProxy) cl.newInstance();
-            ((Proxy) proxy).setHandler(instance);
-            instance.constructed = true;
-            return proxy;
-        } catch (Throwable t) {
-            LOG.error(LOG.javassistEnhancementFailed(entityName), t);
-            throw new HibernateException(LOG.javassistEnhancementFailed(entityName), t);
-        }
-    }
+		private Object handleEnableTracking() {
+			boolean oldValue = this.lazyInitializer.entityTracker.isTracking();
+			this.lazyInitializer.entityTracker.setTracking( true );
 
-    public static HibernateProxy getProxy(
-            final Class factory,
-            final String entityName,
-            final Class persistentClass,
-            final Class[] interfaces,
-            final Method getIdentifierMethod,
-            final Method setIdentifierMethod,
-            final CompositeType componentIdType,
-            final Serializable id,
-            final SessionImplementor session,
-            final Set<Property> persistentProperties) throws HibernateException {
+			if ( !lazyInitializer.isUninitialized() ) {
+				Object o = lazyInitializer.getImplementation();
+				if ( o instanceof Trackable ) {
+					Trackable entity = (Trackable) o;
+					entity.enableTracking();
+				}
+			}
 
-        // note: interfaces is assumed to already contain HibernateProxy.class
-        final AutofetchLazyInitializer instance = new AutofetchLazyInitializer(
-                entityName,
-                persistentClass,
-                interfaces,
-                id,
-                getIdentifierMethod,
-                setIdentifierMethod,
-                componentIdType,
-                session,
-                persistentProperties,
-                ReflectHelper.overridesEquals(persistentClass)
-        );
+			return oldValue;
+		}
 
-        final HibernateProxy proxy;
-        try {
-            proxy = (HibernateProxy) factory.newInstance();
-        } catch (Exception e) {
-            throw new HibernateException("Javassist Enhancement failed: " + persistentClass.getName(), e);
-        }
+		private Object extendProfile(Object[] params) {
+			if ( !lazyInitializer.isUninitialized() ) {
+				Object o = lazyInitializer.getImplementation();
+				if ( o instanceof TrackableEntity ) {
+					TrackableEntity entity = (TrackableEntity) o;
+					entity.extendProfile( (Statistics) params[0] );
+				}
+			}
+			else {
+				throw new IllegalStateException( "Can't call extendProfile on unloaded self." );
+			}
 
-        ((Proxy) proxy).setHandler(instance);
-        instance.constructed = true;
+			return null;
+		}
 
-        return proxy;
-    }
+		private Object handleRemoveTracker(Object[] params) {
+			if ( !lazyInitializer.isUninitialized() ) {
+				Object o = lazyInitializer.getImplementation();
+				if ( o instanceof Trackable ) {
+					Trackable entity = (Trackable) o;
+					entity.removeTracker( (Statistics) params[0] );
+				}
+			}
+			return null;
+		}
 
-    private static final MethodFilter FINALIZE_FILTER = new MethodFilter() {
+		@SuppressWarnings("unchecked")
+		private Object handleAddTrackers(Object param) {
+			Set<Statistics> newTrackers = (Set<Statistics>) param;
+			this.lazyInitializer.entityTracker.addTrackers( newTrackers );
+			if ( !lazyInitializer.isUninitialized() ) {
+				Object o = lazyInitializer.getImplementation();
+				if ( o instanceof Trackable ) {
+					Trackable entity = (Trackable) o;
+					entity.addTrackers( newTrackers );
+				}
+			}
 
-        @Override
-        public boolean isHandled(Method m) {
-            // skip finalize methods
-            return !(m.getParameterTypes().length == 0 && m.getName().equals("finalize"));
-        }
-    };
+			return null;
+		}
+
+		private Object handleAddTracked(Object param) {
+			this.lazyInitializer.entityTracker.addTracker( (Statistics) param );
+			if ( !lazyInitializer.isUninitialized() ) {
+				Object o = lazyInitializer.getImplementation();
+				if ( o instanceof Trackable ) {
+					Trackable entity = (Trackable) o;
+					entity.addTracker( (Statistics) param );
+				}
+			}
+
+			return null;
+		}
+	}
 }

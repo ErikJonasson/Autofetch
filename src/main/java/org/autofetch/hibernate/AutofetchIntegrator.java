@@ -9,89 +9,42 @@
  */
 package org.autofetch.hibernate;
 
-import com.google.auto.service.AutoService;
-import org.hibernate.EntityMode;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.boot.Metadata;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
 import org.hibernate.integrator.spi.Integrator;
-import org.hibernate.integrator.spi.ServiceContributingIntegrator;
-import org.hibernate.mapping.PersistentClass;
-import org.hibernate.metamodel.source.MetadataImplementor;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
-import java.util.Iterator;
+import com.google.auto.service.AutoService;
 
 @SuppressWarnings("unused")
 @AutoService(Integrator.class)
-public class AutofetchIntegrator implements ServiceContributingIntegrator {
+public class AutofetchIntegrator implements Integrator {
 
-    @Override
-    public void disintegrate(SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
-    }
+	@Override
+	public void integrate(
+			Metadata metadata,
+			SessionFactoryImplementor sessionFactory,
+			SessionFactoryServiceRegistry serviceRegistry) {
+		integrateEventListeners( serviceRegistry );
+	}
 
-    @Override
-    public void prepareServices(StandardServiceRegistryBuilder serviceRegistryBuilder) {
-        serviceRegistryBuilder.addInitiator(AutofetchServiceInitiator.INSTANCE);
-    }
+	@Override
+	public void disintegrate(
+			SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
+	}
 
-    @Override
-    public void integrate(Configuration configuration, SessionFactoryImplementor sessionFactory,
-                          SessionFactoryServiceRegistry serviceRegistry) {
-        doIntegrate(serviceRegistry);
+	private static void integrateEventListeners(ServiceRegistry serviceRegistry) {
+		final ExtentManager extentManager = serviceRegistry.getService( AutofetchService.class ).getExtentManager();
 
-        final Iterator<PersistentClass> classMappings = configuration.getClassMappings();
-        while (classMappings.hasNext()) {
-            PersistentClass persistentClass = classMappings.next();
-            persistentClass.addTuplizer(EntityMode.POJO, AutofetchTuplizer.class.getName());
+		EventListenerRegistry eventListenerRegistry = serviceRegistry.getService( EventListenerRegistry.class );
+		eventListenerRegistry.setListeners( EventType.LOAD, new AutofetchLoadListener( extentManager ) );
 
-            final Iterator propertyIterator = persistentClass.getPropertyIterator();
-            while (propertyIterator.hasNext()) {
-                org.hibernate.mapping.Property property = (org.hibernate.mapping.Property) propertyIterator.next();
-                String name = property.getName();
-                if (property.getValue() instanceof org.hibernate.mapping.Collection) {
-                    replaceCollection(property, persistentClass);
-                }
-            }
-        }
-    }
-
-    @Override
-    public void integrate(MetadataImplementor metadata,
-                          SessionFactoryImplementor sessionFactory,
-                          SessionFactoryServiceRegistry serviceRegistry) {
-    }
-
-    private void doIntegrate(ServiceRegistry serviceRegistry) {
-        final ExtentManager extentManager = serviceRegistry.getService(AutofetchService.class).getExtentManager();
-
-        EventListenerRegistry eventListenerRegistry = serviceRegistry.getService(EventListenerRegistry.class);
-        eventListenerRegistry.setListeners(EventType.LOAD, new AutofetchLoadListener(extentManager));
-
-        eventListenerRegistry.setListeners(EventType.INIT_COLLECTION,
-                new AutofetchInitializeCollectionListener(extentManager));
-    }
-
-    private static void replaceCollection(org.hibernate.mapping.Property collectionProperty, PersistentClass owner) {
-        if (!(collectionProperty.getValue() instanceof org.hibernate.mapping.Collection)) {
-            return;
-        }
-
-        org.hibernate.mapping.Collection value = (org.hibernate.mapping.Collection) collectionProperty.getValue();
-
-        if (value instanceof org.hibernate.mapping.Bag) {
-            value.setTypeName(AutofetchBagType.class.getName());
-        } else if (value instanceof org.hibernate.mapping.IdentifierBag) {
-            value.setTypeName(AutofetchIdBagType.class.getName());
-        } else if (value instanceof org.hibernate.mapping.List) {
-            value.setTypeName(AutofetchListType.class.getName());
-        } else if (value instanceof org.hibernate.mapping.Set) {
-            value.setTypeName(AutofetchSetType.class.getName());
-        } else {
-            throw new UnsupportedOperationException("Collection type not supported: " + value.getClass());
-        }
-    }
+		eventListenerRegistry.setListeners(
+				EventType.INIT_COLLECTION,
+				new AutofetchInitializeCollectionListener( extentManager )
+		);
+	}
 }

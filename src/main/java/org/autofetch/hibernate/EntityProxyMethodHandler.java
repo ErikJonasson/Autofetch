@@ -14,54 +14,74 @@
  */
 package org.autofetch.hibernate;
 
-import javassist.util.proxy.MethodHandler;
-
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Set;
 
-public class EntityProxyMethodHandler implements MethodHandler, Serializable {
+import org.hibernate.bytecode.internal.bytebuddy.PassThroughInterceptor;
+import org.hibernate.proxy.ProxyConfiguration;
 
-    private final EntityTracker entityTracker;
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
+import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.This;
 
-    public EntityProxyMethodHandler(Set<Property> persistentProperties, ExtentManager extentManager) {
-        this.entityTracker = new EntityTracker(persistentProperties, extentManager);
-    }
+public class EntityProxyMethodHandler extends PassThroughInterceptor
+		implements ProxyConfiguration.Interceptor, Serializable {
 
-    @Override
-    public Object invoke(Object obj, Method thisMethod, Method proceed, Object[] args) throws Throwable {
-        if (args.length == 0) {
-            if (thisMethod.getName().equals("disableTracking")) {
-                boolean oldValue = entityTracker.isTracking();
-                entityTracker.setTracking(false);
-                return oldValue;
-            } else if (thisMethod.getName().equals("enableTracking")) {
-                boolean oldValue = entityTracker.isTracking();
-                entityTracker.setTracking(true);
-                return oldValue;
-            } else if (thisMethod.getName().equals("isAccessed")) {
-                return entityTracker.isAccessed();
-            }
-        } else if (args.length == 1) {
-            if (thisMethod.getName().equals("addTracker") && thisMethod.getParameterTypes()[0].equals(Statistics.class)) {
-                entityTracker.addTracker((Statistics) args[0]);
-                return null;
-            } else if (thisMethod.getName().equals("addTrackers") && thisMethod.getParameterTypes()[0].equals(Set.class)) {
-                @SuppressWarnings("unchecked")
-                Set<Statistics> newTrackers = (Set) args[0];
-                entityTracker.addTrackers(newTrackers);
-                return null;
-            } else if (thisMethod.getName().equals("extendProfile") && thisMethod.getParameterTypes()[0].equals(Statistics.class)) {
-                entityTracker.extendProfile((Statistics) args[0], obj);
-                return null;
-            } else if (thisMethod.getName().equals("removeTracker") && thisMethod.getParameterTypes()[0].equals(Statistics.class)) {
-                entityTracker.removeTracker((Statistics) args[0]);
-                return null;
-            }
-        }
+	private final EntityTracker entityTracker;
 
-        entityTracker.trackAccess(obj);
+	EntityProxyMethodHandler(
+			Object proxiedObject,
+			String proxiedClassName,
+			Set<Property> persistentProperties,
+			ExtentManager extentManager) {
+		super( proxiedObject, proxiedClassName );
+		this.entityTracker = new EntityTracker( persistentProperties, extentManager );
+	}
 
-        return proceed.invoke(obj, args);
-    }
+	@Override
+	public Object intercept(@This Object instance, @Origin Method method, @AllArguments Object[] args)
+			throws Exception {
+		if ( args.length == 0 ) {
+			switch ( method.getName() ) {
+				case "disableTracking": {
+					boolean oldValue = entityTracker.isTracking();
+					entityTracker.setTracking( false );
+					return oldValue;
+				}
+				case "enableTracking": {
+					boolean oldValue = entityTracker.isTracking();
+					entityTracker.setTracking( true );
+					return oldValue;
+				}
+				case "isAccessed":
+					return entityTracker.isAccessed();
+			}
+		}
+		else if ( args.length == 1 ) {
+			if ( method.getName().equals( "addTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
+				entityTracker.addTracker( (Statistics) args[0] );
+				return null;
+			}
+			else if ( method.getName().equals( "addTrackers" ) && method.getParameterTypes()[0].equals( Set.class ) ) {
+				@SuppressWarnings("unchecked")
+				Set<Statistics> newTrackers = (Set) args[0];
+				entityTracker.addTrackers( newTrackers );
+				return null;
+			}
+			else if ( method.getName()
+					.equals( "extendProfile" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
+				entityTracker.extendProfile( (Statistics) args[0], instance );
+				return null;
+			}
+			else if ( method.getName()
+					.equals( "removeTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
+				entityTracker.removeTracker( (Statistics) args[0] );
+				return null;
+			}
+		}
+
+		entityTracker.trackAccess( instance );
+		return super.intercept( instance, method, args );
+	}
 }

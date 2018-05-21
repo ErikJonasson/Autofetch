@@ -51,7 +51,6 @@ public class Employee {
 	@ManyToOne(cascade = { CascadeType.ALL })
 	private Employee m_mentor;
 
-	//@CollectionType(type = "org.autofetch.hibernate.AutofetchSetType")
 	@ManyToMany(cascade = { CascadeType.ALL })
 	@JoinTable(name = "friends", joinColumns = { @JoinColumn(name = "friend_id") }, inverseJoinColumns = { @JoinColumn(name = "befriended_id") })
 	private Set<Employee> m_friends;

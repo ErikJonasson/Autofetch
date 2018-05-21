@@ -12,15 +12,17 @@
  */
 package org.autofetch.hibernate;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+
 import org.hibernate.HibernateException;
 import org.hibernate.bytecode.spi.ReflectionOptimizer;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
-import org.hibernate.tuple.PojoInstantiator;
-
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import org.hibernate.tuple.entity.EntityMetamodel;
+import org.hibernate.tuple.entity.PojoEntityInstantiator;
 
 /**
  * This code is based on the instantiator implementations in the Hibernate source code.
@@ -28,47 +30,45 @@ import java.util.Set;
  *
  * @author Ali Ibrahim <aibrahim@cs.utexas.edu>
  */
-public class AutofetchInstantiator extends PojoInstantiator {
+public class AutofetchInstantiator extends PojoEntityInstantiator {
 
-    private final ExtentManager extentManager;
+	private final ExtentManager extentManager;
 
-    private final Class<?> mappedClass;
+	private final Class<?> mappedClass;
 
-    private final String idMethodName;
+	private Set<org.autofetch.hibernate.Property> persistentProperties;
 
-    private Set<org.autofetch.hibernate.Property> persistentProperties;
+	AutofetchInstantiator(
+			EntityMetamodel entityMetamodel,
+			PersistentClass persistentClass,
+			ReflectionOptimizer.InstantiationOptimizer optimizer,
+			ExtentManager extentManager) {
+		super( entityMetamodel, persistentClass, optimizer );
 
-    public AutofetchInstantiator(PersistentClass persistentClass,
-                                 ReflectionOptimizer.InstantiationOptimizer optimizer,
-                                 ExtentManager extentManager) {
-        super(persistentClass, optimizer);
+		this.extentManager = extentManager;
+		this.mappedClass = persistentClass.getMappedClass();
 
-        this.extentManager = extentManager;
-        this.mappedClass = persistentClass.getMappedClass();
+		this.persistentProperties = new HashSet<>();
 
-        if (persistentClass.getIdentifierProperty() != null &&
-                persistentClass.getIdentifierProperty().getGetter(this.mappedClass) != null) {
-            this.idMethodName = persistentClass.getIdentifierProperty().getGetter(this.mappedClass).getMethodName();
-        } else {
-            this.idMethodName = null;
-        }
+		@SuppressWarnings("unchecked")
+		Iterator<Property> propIter = persistentClass.getPropertyClosureIterator();
+		while ( propIter.hasNext() ) {
+			this.persistentProperties.add( new org.autofetch.hibernate.Property( propIter.next() ) );
+		}
+	}
 
-        this.persistentProperties = new HashSet<>();
-
-        @SuppressWarnings("unchecked")
-        Iterator<Property> propIter = persistentClass.getPropertyClosureIterator();
-        while (propIter.hasNext()) {
-            this.persistentProperties.add(new org.autofetch.hibernate.Property(propIter.next()));
-        }
-    }
-
-    @Override
-    public Object instantiate() {
-        // instantiate our own proxy instead of using hibernate's class
-        try {
-            return EntityProxyFactory.getProxyInstance(mappedClass, idMethodName, persistentProperties, extentManager);
-        } catch (Exception ie) {
-            throw new HibernateException("Unable to instantiate class", ie);
-        }
-    }
+	@Override
+	public Object instantiate() {
+		try {
+			return applyInterception( EntityProxyFactory.getProxyInstance(
+					mappedClass,
+					persistentProperties,
+					extentManager
+			) );
+		}
+		catch (IllegalAccessException | NoSuchMethodException |
+				InvocationTargetException | java.lang.InstantiationException e) {
+			throw new HibernateException( "Unable to instantiate class", e );
+		}
+	}
 }
