@@ -15,6 +15,13 @@
     </properties>
 
     <dependencies>
+<dependency>
+    <groupId>org.hibernate.orm.tooling</groupId>
+    <artifactId>hibernate-enhance-maven-plugin</artifactId>
+    <version>5.3.0.Final</version>
+</dependency>
+
+    
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
@@ -51,4 +58,29 @@
             <scope>provided</scope>
         </dependency>
     </dependencies>
+<!--     <build> -->
+<!--     <plugins> -->
+       
+<!--         <plugin> -->
+<!--             <groupId>org.hibernate.orm.tooling</groupId> -->
+<!--             <artifactId>hibernate-enhance-maven-plugin</artifactId> -->
+<!--             <version>${hibernate-orm.version}</version> -->
+<!--             <executions> -->
+<!--                 <execution> -->
+<!--                     <configuration> -->
+<!--                         <failOnError>true</failOnError> -->
+<!--                         <enableLazyInitialization>true</enableLazyInitialization> -->
+<!--                         <enableDirtyTracking>true</enableDirtyTracking> -->
+<!--                         <enableAssociationManagement>true</enableAssociationManagement> -->
+<!--                         <enableExtendedEnhancement>false</enableExtendedEnhancement> -->
+<!--                     </configuration> -->
+<!--                     <goals> -->
+<!--                         <goal>enhance</goal> -->
+<!--                     </goals> -->
+<!--                 </execution> -->
+<!--             </executions> -->
+<!--         </plugin> -->
+       
+<!--     </plugins> -->
+<!-- </build> -->
 </project>
