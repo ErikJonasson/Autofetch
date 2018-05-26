@@ -221,17 +221,12 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
 
 	@Override
 	protected Object getComponentValue(ComponentType type, Object component, String propertyPath) {
-		return super.getComponentValue( type, component, propertyPath );
-	}
-
-	@Override
-	public Getter getGetter(int i) {
-		return super.getGetter( i );
-	}
-
-	@Override
-	protected boolean shouldGetAllProperties(Object entity) {
-		return super.shouldGetAllProperties( entity );
+		boolean wasTracking = disableTracking( component );
+		Object componentValue = super.getComponentValue( type, component, propertyPath );
+		if ( wasTracking ) {
+			enableTracking( component );
+		}
+		return componentValue;
 	}
 
 	private boolean disableTracking(Object o) {
@@ -244,13 +239,10 @@ public class AutofetchTuplizer extends PojoEntityTuplizer {
 		}
 	}
 
-	private boolean enableTracking(Object o) {
+	private void enableTracking(Object o) {
 		if ( o instanceof Trackable ) {
 			Trackable entity = (Trackable) o;
-			return entity.enableTracking();
-		}
-		else {
-			return false;
+			entity.enableTracking();
 		}
 	}
 

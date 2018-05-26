@@ -89,6 +89,8 @@ public class AutofetchLazyInitializer extends BasicLazyInitializer implements Pr
 						return handleDisableTracking();
 					case "isAccessed":
 						return entityTracker.isAccessed();
+					default:
+						break;
 				}
 			}
 			else if ( args.length == 1 ) {

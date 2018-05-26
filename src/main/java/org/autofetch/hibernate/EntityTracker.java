@@ -106,7 +106,6 @@ public class EntityTracker implements Serializable {
 	 *
 	 * @return null if traversal profile could not be extended
 	 */
-
 	private Statistics extendTracker(Statistics tracker, String assoc, boolean collection) {
 		TraversalProfile parentNode = tracker.getProfileNode();
 		if ( !parentNode.hasSubProfile( assoc ) ) {
