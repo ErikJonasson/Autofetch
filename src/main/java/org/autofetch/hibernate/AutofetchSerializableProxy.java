@@ -20,24 +20,26 @@ import org.hibernate.HibernateException;
 import org.hibernate.proxy.AbstractLazyInitializer;
 import org.hibernate.proxy.AbstractSerializableProxy;
 import org.hibernate.proxy.HibernateProxy;
+import org.hibernate.proxy.pojo.bytebuddy.ByteBuddyInterceptor;
+import org.hibernate.proxy.pojo.bytebuddy.ByteBuddyProxyFactory;
 import org.hibernate.type.CompositeType;
 
 public final class AutofetchSerializableProxy extends AbstractSerializableProxy {
 
-	private Class persistentClass;
-	private Class[] interfaces;
+	private Class<?> persistentClass;
+	private Class<?>[] interfaces;
 	private final String identifierGetterMethodName;
-	private final Class identifierGetterMethodClass;
+	private final Class<?> identifierGetterMethodClass;
 	private final String identifierSetterMethodName;
-	private final Class identifierSetterMethodClass;
-	private final Class[] identifierSetterMethodParams;
+	private final Class<?> identifierSetterMethodClass;
+	private final Class<?>[] identifierSetterMethodParams;
 	private final CompositeType componentIdType;
 	private Set<Property> persistentProperties;
 
 	public AutofetchSerializableProxy(
 			final String entityName,
-			final Class persistentClass,
-			final Class[] interfaces,
+			final Class<?> persistentClass,
+			final Class<?>[] interfaces,
 			final Serializable id,
 			final Boolean readOnly,
 			final Method getIdentifierMethod,
@@ -82,22 +84,20 @@ public final class AutofetchSerializableProxy extends AbstractSerializableProxy 
 	private Object readResolve() {
 		try {
 			HibernateProxy proxy = AutofetchLazyInitializer.getProxy(
-					getEntityName(),
+					super.getEntityName(),
 					persistentClass,
 					interfaces,
-					identifierGetterMethodClass == null ?
-							null
-							:
-							identifierGetterMethodClass.getDeclaredMethod( identifierGetterMethodName, (Class[]) null ),
-					identifierSetterMethodName == null ?
-							null
-							:
-							identifierSetterMethodClass.getDeclaredMethod(
-									identifierSetterMethodName,
-									identifierSetterMethodParams
-							),
+					identifierGetterMethodClass == null
+							? null
+							: identifierGetterMethodClass.getDeclaredMethod( identifierGetterMethodName ),
+					identifierSetterMethodName == null
+							? null
+							: identifierSetterMethodClass.getDeclaredMethod(
+							identifierSetterMethodName,
+							identifierSetterMethodParams
+					),
 					componentIdType,
-					getId(),
+					super.getId(),
 					null,
 					persistentProperties
 			);

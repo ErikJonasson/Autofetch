@@ -10,18 +10,21 @@
 package org.autofetch.hibernate;
 
 import org.hibernate.boot.Metadata;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EventType;
 import org.hibernate.integrator.spi.Integrator;
+import org.hibernate.integrator.spi.ServiceContributingIntegrator;
 import org.hibernate.service.ServiceRegistry;
+import org.hibernate.service.spi.ServiceContributor;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
 import com.google.auto.service.AutoService;
 
 @SuppressWarnings("unused")
 @AutoService(Integrator.class)
-public class AutofetchIntegrator implements Integrator {
+public class AutofetchIntegrator implements ServiceContributingIntegrator {
 
 	@Override
 	public void integrate(
@@ -34,6 +37,11 @@ public class AutofetchIntegrator implements Integrator {
 	@Override
 	public void disintegrate(
 			SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {
+	}
+
+	@Override
+	public void prepareServices(StandardServiceRegistryBuilder serviceRegistryBuilder) {
+		serviceRegistryBuilder.addInitiator( AutofetchServiceInitiator.INSTANCE );
 	}
 
 	private static void integrateEventListeners(ServiceRegistry serviceRegistry) {

@@ -18,32 +18,46 @@ import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Set;
 
-import org.hibernate.bytecode.internal.bytebuddy.PassThroughInterceptor;
 import org.hibernate.proxy.ProxyConfiguration;
 
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
 import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.implementation.bind.annotation.This;
 
-public class EntityProxyMethodHandler extends PassThroughInterceptor
-		implements ProxyConfiguration.Interceptor, Serializable {
+public class EntityProxyMethodHandler implements ProxyConfiguration.Interceptor, Serializable {
 
 	private final EntityTracker entityTracker;
+	private final Object proxiedObject;
+	private final String proxiedClassName;
 
 	EntityProxyMethodHandler(
 			Object proxiedObject,
 			String proxiedClassName,
 			Set<Property> persistentProperties,
 			ExtentManager extentManager) {
-		super( proxiedObject, proxiedClassName );
+		this.proxiedObject = proxiedObject;
+		this.proxiedClassName = proxiedClassName;
 		this.entityTracker = new EntityTracker( persistentProperties, extentManager );
 	}
 
 	@Override
-	public Object intercept(@This Object instance, @Origin Method method, @AllArguments Object[] args)
+	@RuntimeType
+	public Object intercept(@This Object instance, @Origin Method method, @AllArguments Object[] arguments)
 			throws Exception {
-		if ( args.length == 0 ) {
-			switch ( method.getName() ) {
+		final String methodName = method.getName();
+
+		if ( "toString".equals( methodName ) ) {
+			return proxiedClassName + "@" + System.identityHashCode( instance );
+		}
+		else if ( "equals".equals( methodName ) ) {
+			return proxiedObject == instance;
+		}
+		else if ( "hashCode".equals( methodName ) ) {
+			return System.identityHashCode( instance );
+		}
+		else if ( arguments.length == 0 ) {
+			switch ( methodName ) {
 				case "disableTracking": {
 					boolean oldValue = entityTracker.isTracking();
 					entityTracker.setTracking( false );
@@ -56,32 +70,36 @@ public class EntityProxyMethodHandler extends PassThroughInterceptor
 				}
 				case "isAccessed":
 					return entityTracker.isAccessed();
+
+				default:
+					break;
 			}
 		}
-		else if ( args.length == 1 ) {
-			if ( method.getName().equals( "addTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
-				entityTracker.addTracker( (Statistics) args[0] );
+		else if ( arguments.length == 1 ) {
+			if ( methodName.equals( "addTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
+				entityTracker.addTracker( (Statistics) arguments[0] );
 				return null;
 			}
-			else if ( method.getName().equals( "addTrackers" ) && method.getParameterTypes()[0].equals( Set.class ) ) {
+			else if ( methodName.equals( "addTrackers" ) && method.getParameterTypes()[0].equals( Set.class ) ) {
 				@SuppressWarnings("unchecked")
-				Set<Statistics> newTrackers = (Set) args[0];
+				Set<Statistics> newTrackers = (Set) arguments[0];
 				entityTracker.addTrackers( newTrackers );
 				return null;
 			}
-			else if ( method.getName()
+			else if ( methodName
 					.equals( "extendProfile" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
-				entityTracker.extendProfile( (Statistics) args[0], instance );
+				entityTracker.extendProfile( (Statistics) arguments[0], instance );
 				return null;
 			}
-			else if ( method.getName()
+			else if ( methodName
 					.equals( "removeTracker" ) && method.getParameterTypes()[0].equals( Statistics.class ) ) {
-				entityTracker.removeTracker( (Statistics) args[0] );
+				entityTracker.removeTracker( (Statistics) arguments[0] );
 				return null;
 			}
 		}
 
 		entityTracker.trackAccess( instance );
-		return super.intercept( instance, method, args );
+		// TODO (ammachado): Here the real instance should be used, but how?
+		return method.invoke( instance, arguments );
 	}
 }

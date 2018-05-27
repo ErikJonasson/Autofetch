@@ -19,6 +19,7 @@ import javax.persistence.SharedCacheMode;
 import javax.persistence.ValidationMode;
 import javax.persistence.spi.PersistenceUnitTransactionType;
 
+import org.hibernate.Session;
 import org.hibernate.annotations.common.util.StringHelper;
 import org.hibernate.boot.registry.internal.StandardServiceRegistryImpl;
 import org.hibernate.bytecode.enhance.spi.EnhancementContext;
@@ -295,35 +296,35 @@ public abstract class BaseEntityManagerFunctionalTestCase extends BaseUnitTestCa
 		}
 	}
 
-	protected EntityManager getOrCreateEntityManager() {
+	protected Session getOrCreateEntityManager() {
 		if ( em == null || !em.isOpen() ) {
 			em = entityManagerFactory.createEntityManager();
 		}
-		return em;
+		return em.unwrap( Session.class );
 	}
 
-	protected EntityManager createIsolatedEntityManager() {
+	protected Session createIsolatedEntityManager() {
 		EntityManager isolatedEm = entityManagerFactory.createEntityManager();
 		isolatedEms.add( isolatedEm );
-		return isolatedEm;
+		return isolatedEm.unwrap( Session.class );
 	}
 
-	protected EntityManager createIsolatedEntityManager(Map props) {
+	protected Session createIsolatedEntityManager(Map props) {
 		EntityManager isolatedEm = entityManagerFactory.createEntityManager(props);
 		isolatedEms.add( isolatedEm );
-		return isolatedEm;
+		return isolatedEm.unwrap( Session.class );
 	}
 
-	protected EntityManager createEntityManager() {
-		return createEntityManager( Collections.emptyMap() );
+	protected Session createEntityManager() {
+		return createEntityManager( Collections.emptyMap() ).unwrap( Session.class );
 	}
 
-	protected EntityManager createEntityManager(Map properties) {
+	protected Session createEntityManager(Map properties) {
 		// always reopen a new EM and close the existing one
 		if ( em != null && em.isOpen() ) {
 			em.close();
 		}
 		em = entityManagerFactory.createEntityManager( properties );
-		return em;
+		return em.unwrap( Session.class );
 	}
 }

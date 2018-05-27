@@ -42,7 +42,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 		em.clearExtentInformation();
 
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertTrue( "object should not be intialized", !Hibernate.isInitialized( dave ) );
@@ -58,11 +58,13 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 		Long daveId = createObjectGraph( true );
 
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
-			tx.commit();
+			Assert.assertTrue("object should not be intialized", !Hibernate.isInitialized(dave));
 			Assert.assertNotNull( dave.getName() );
+			Assert.assertTrue("object should be intialized now", Hibernate.isInitialized(dave));
+			tx.commit();
 		}
 	}
 
@@ -435,7 +437,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void collectionAccess1() {
 		Long grandfatherId = createNObjectGraph();
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee grandfather = sess.load( Employee.class, grandfatherId );
 			Assert.assertEquals(
@@ -452,7 +454,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void collectionAccess2() {
 		Long grandfatherId = createNObjectGraph();
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 
 			Transaction tx = sess.beginTransaction();
 			Employee grandfather = sess.load( Employee.class, grandfatherId );
@@ -471,7 +473,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void collectionAccess3() {
 		Long grandfatherId = createNObjectGraph();
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee grandfather = sess.load( Employee.class, grandfatherId );
 			Assert.assertEquals(
@@ -489,7 +491,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void addressAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getAddress().getStreet() );
@@ -504,7 +506,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void mentorAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getMentor().getName() );
@@ -515,7 +517,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void friendAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotEquals( 0, dave.getFriends().size() );
@@ -525,7 +527,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void secondLevelSupervisorAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getSupervisor() );
@@ -536,7 +538,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private void supervisorAndMentorAccess() {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getSupervisor().getName() );
@@ -548,7 +550,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee someAccess(boolean traverse) {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getName() );
@@ -565,7 +567,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee someAccessCriteria(boolean traverse) {
 		Long daveId = createObjectGraph( true );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Criteria crit = new AutofetchCriteria( sess.createCriteria( Employee.class ) );
 			crit.add( Restrictions.eq( "id", daveId ) );
@@ -584,7 +586,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee initializeCollectionAccess(boolean traverse) {
 		Long daveId = createObjectGraph( false );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Query q = sess.createQuery( "select e from Employee e where e.id = :id" );
 			q.setParameter( "id", daveId );
@@ -603,7 +605,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee multipleCollectionAccess(boolean traverse) {
 		Long daveId = createObjectGraph( false );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
 			Assert.assertNotNull( dave.getName() );
@@ -621,7 +623,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 	private Employee multipleCollectionAccessCriteria(boolean traverse) {
 		Long daveId = createObjectGraph( false );
-		try (Session sess = openSession()) {
+		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Criteria crit = new AutofetchCriteria( sess.createCriteria( Employee.class ) );
 			crit.add( Restrictions.eq( "id", daveId ) );
@@ -645,11 +647,8 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 	 * @return Id of either Dave or John
 	 */
 	private Long createObjectGraph(boolean returnLeaf) {
-		Session sess;
-		Transaction tx = null;
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
+		try (Session sess = getOrCreateEntityManager()) {
+			Transaction tx = sess.beginTransaction();
 			Employee root = new Employee( "Root", null, null, new Address( "", "", "" ) );
 			Employee e4 = new Employee( "Ali", null, null, new Address( "104 Main St.", "Austin", "Texas" ) );
 			Employee e5 = new Employee( "Ben", null, null, new Address( "105 Main St.", "Austin", "Texas" ) );
@@ -672,7 +671,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 			sess.save( root );
 			tx.commit();
-			tx = null;
+
 			if ( returnLeaf ) {
 				return e3.getId();
 			}
@@ -680,19 +679,11 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 				return e0.getId();
 			}
 		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
-		}
 	}
 
 	private Long createNObjectGraph() {
-		Session sess;
-		Transaction tx = null;
-		try {
-			sess = openSession();
-			tx = sess.beginTransaction();
+		try (Session sess = getOrCreateEntityManager()) {
+			Transaction tx = sess.beginTransaction();
 			Employee grandfather = new org.autofetch.test.Employee( "Grandfather", null, null,
 																	new Address( "100 Main St.", "Austin", "Texas" )
 			);
@@ -707,13 +698,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 			}
 			sess.save( grandfather );
 			tx.commit();
-			tx = null;
 			return grandfather.getId();
-		}
-		finally {
-			if ( tx != null ) {
-				tx.rollback();
-			}
 		}
 	}
 
@@ -732,9 +717,6 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 		options.put( AvailableSettings.ENHANCER_ENABLE_DIRTY_TRACKING, true );
 		options.put( AvailableSettings.ENHANCER_ENABLE_LAZY_INITIALIZATION, true );
 		options.put( AvailableSettings.ENHANCER_ENABLE_ASSOCIATION_MANAGEMENT, true );
-	}
-
-	private Session openSession() {
-		return super.createEntityManager().unwrap( Session.class );
+		options.put( org.hibernate.cfg.AvailableSettings.CURRENT_SESSION_CONTEXT_CLASS, "thread" );
 	}
 }

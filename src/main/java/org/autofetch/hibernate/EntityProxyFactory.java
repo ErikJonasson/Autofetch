@@ -22,16 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.hibernate.cfg.Environment;
-import org.hibernate.internal.CoreLogging;
-import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.proxy.ProxyConfiguration;
 
 //Class holding Factories for all classes, Constructors for all classes, sets a callbackfilter on the enhancer (which does what exactly?), Enhancer takes care of callbacks
 public class EntityProxyFactory {
-
-	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( AutofetchLazyInitializer.class );
-
-	private static final ConcurrentMap<Class<?>, Class<?>> entityFactoryMap = new ConcurrentHashMap<>();
 
 	private static final ConcurrentMap<Class<?>, Constructor<?>> entityConstructorMap = new ConcurrentHashMap<>();
 
@@ -44,7 +38,7 @@ public class EntityProxyFactory {
 		return constructor;
 	}
 
-	public static Object getProxyInstance(
+	static Object getProxyInstance(
 			Class persistentClass,
 			Set<Property> persistentProperties,
 			ExtentManager extentManager)
@@ -59,13 +53,12 @@ public class EntityProxyFactory {
 				.getProxyFactoryFactory()
 				.buildBasicProxyFactory( persistentClass, new Class[] { TrackableEntity.class } )
 				.getProxy();
-		final EntityProxyMethodHandler interceptor = new EntityProxyMethodHandler(
+		proxy.$$_hibernate_set_interceptor( new EntityProxyMethodHandler(
 				proxy,
 				persistentClass.getName(),
 				persistentProperties,
 				extentManager
-		);
-		proxy.$$_hibernate_set_interceptor( interceptor );
+		) );
 		return proxy;
 	}
 
