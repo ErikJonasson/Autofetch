@@ -102,7 +102,7 @@ public class AutofetchLoadListener extends DefaultLoadEventListener {
         queryStr.append(" where entity.id = :id");
 
         if (log.isDebugEnabled()) {
-            log.debug("Query: " + queryStr);
+            log.debug("Autofetched Query: " + queryStr);
         }
 
         Query q = sess.createQuery(queryStr.toString());

@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-//Class holding Factories for all classes, Constructors for all classes, sets a callbackfilter on the enhancer (which does what exactly?), Enhancer takes care of callbacks
 public class EntityProxyFactory {
 
     private static final CoreMessageLogger LOG = CoreLogging.messageLogger(AutofetchLazyInitializer.class);
@@ -45,9 +44,7 @@ public class EntityProxyFactory {
 
     private static final ConcurrentMap<Class<?>, Constructor<?>> entityConstructorMap = new ConcurrentHashMap<>();
 
-    //if entityFactoryMap doesnt contain that specific class, add it
     private static Class<?> getProxyFactory(Class<?> persistentClass, String idMethodName) {
-        // Not sure how enhancer work, but it seems like you tell enhancer what type of subclasses that can be created, and all the method calls will be intercepted by entitycallbackfilter
         if (!entityFactoryMap.containsKey(persistentClass)) {
             ProxyFactory factory = new ProxyFactory();
             factory.setSuperclass(persistentClass);
