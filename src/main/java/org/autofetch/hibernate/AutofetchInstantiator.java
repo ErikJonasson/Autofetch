@@ -18,7 +18,10 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.hibernate.HibernateException;
+import org.hibernate.bytecode.enhance.spi.interceptor.LazyAttributeLoadingInterceptor;
 import org.hibernate.bytecode.spi.ReflectionOptimizer;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
+import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.tuple.entity.EntityMetamodel;
@@ -33,6 +36,8 @@ import org.hibernate.tuple.entity.PojoEntityInstantiator;
 public class AutofetchInstantiator extends PojoEntityInstantiator {
 
 	private final ExtentManager extentManager;
+	private String idMethodName;
+	EntityMetamodel entityMetamodel;
 
 	private final Class<?> mappedClass;
 
@@ -44,10 +49,10 @@ public class AutofetchInstantiator extends PojoEntityInstantiator {
 			ReflectionOptimizer.InstantiationOptimizer optimizer,
 			ExtentManager extentManager) {
 		super( entityMetamodel, persistentClass, optimizer );
-
+		this.entityMetamodel = entityMetamodel;
 		this.extentManager = extentManager;
 		this.mappedClass = persistentClass.getMappedClass();
-
+		this.idMethodName = persistentClass.getIdentifierProperty().getGetter(mappedClass).getMethodName();
 		this.persistentProperties = new HashSet<>();
 
 		@SuppressWarnings("unchecked")
@@ -56,12 +61,25 @@ public class AutofetchInstantiator extends PojoEntityInstantiator {
 			this.persistentProperties.add( new org.autofetch.hibernate.Property( propIter.next() ) );
 		}
 	}
+	//test
+//	@Override
+//	protected Object applyInterception(Object entity) {
+//		PersistentAttributeInterceptor interceptor = new LazyAttributeLoadingInterceptor(
+//				entityMetamodel.getName(),
+//				entityMetamodel.getBytecodeEnhancementMetadata()
+//						.getLazyAttributesMetadata()
+//						.getLazyAttributeNames(),
+//				null
+//		);
+//		( (PersistentAttributeInterceptable) entity ).$$_hibernate_setInterceptor( interceptor );
+//		return entity;
+//	}
 
 	@Override
 	public Object instantiate() {
 		try {
 			return applyInterception( EntityProxyFactory.getProxyInstance(
-					mappedClass,
+					mappedClass, idMethodName,
 					persistentProperties,
 					extentManager
 			) );

@@ -25,12 +25,15 @@ import com.google.auto.service.AutoService;
 @SuppressWarnings("unused")
 @AutoService(Integrator.class)
 public class AutofetchIntegrator implements ServiceContributingIntegrator {
-
+	
+	private static SessionFactoryImplementor sessionFactory;
+	
 	@Override
 	public void integrate(
 			Metadata metadata,
 			SessionFactoryImplementor sessionFactory,
 			SessionFactoryServiceRegistry serviceRegistry) {
+		AutofetchIntegrator.sessionFactory = sessionFactory;
 		integrateEventListeners( serviceRegistry );
 	}
 
@@ -54,5 +57,9 @@ public class AutofetchIntegrator implements ServiceContributingIntegrator {
 				EventType.INIT_COLLECTION,
 				new AutofetchInitializeCollectionListener( extentManager )
 		);
+	}
+	
+	public static SessionFactoryImplementor getSessionFactory() {
+		return sessionFactory;
 	}
 }

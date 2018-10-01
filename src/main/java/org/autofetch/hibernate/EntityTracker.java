@@ -24,6 +24,7 @@ public class EntityTracker implements Serializable {
 	private final Set<Statistics> trackers = new HashSet<>();
 	private boolean accessed = false;
 	private boolean tracking = true;
+	private Object entity;
 	private Set<Property> persistentProperties;
 	private ExtentManager extentManager;
 
@@ -32,6 +33,10 @@ public class EntityTracker implements Serializable {
 			ExtentManager extentManager) {
 		this.persistentProperties = persistentProperties;
 		this.extentManager = extentManager;
+	}
+
+	public Object getEntity() {
+		return entity;
 	}
 
 	public void trackAccess(Object entity) {
@@ -49,6 +54,7 @@ public class EntityTracker implements Serializable {
 	}
 
 	public void extendProfile(Statistics tracker, Object entity) {
+		this.entity = entity;
 		for ( Property prop : persistentProperties ) {
 			Object propVal = null;
 			try {
@@ -60,7 +66,7 @@ public class EntityTracker implements Serializable {
 					continue; // Weird property, just ignore it.
 				}
 			}
-			if ( propVal instanceof Trackable ) {
+			if ( propVal instanceof Trackable) { //TODO Add trackable interface to all the entities (proxies)
 				Trackable propEntity = (Trackable) propVal;
 				Statistics propTracker = extendTracker( tracker,
 														prop.getName(), prop.isCollection()

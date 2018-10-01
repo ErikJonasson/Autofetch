@@ -27,6 +27,7 @@ import org.hibernate.Session;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.event.internal.DefaultLoadEventListener;
 import org.hibernate.event.spi.LoadEvent;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 
 import org.slf4j.Logger;
@@ -51,15 +52,9 @@ public class AutofetchLoadListener extends DefaultLoadEventListener {
 	}
 
 	@Override
-	public void onLoad(LoadEvent event, LoadType loadType) throws HibernateException {
-		super.onLoad( event, loadType );
-	}
-
-	@Override
-	protected Object loadFromSessionCache(
-			LoadEvent event,
-			EntityKey entityKey,
-			LoadType loadType) throws HibernateException {
+	protected Object loadFromDatasource(
+			final LoadEvent event,
+			final EntityPersister persister) {
 
 		String classname = event.getEntityClassName();
 		if ( log.isDebugEnabled() ) {
@@ -86,13 +81,15 @@ public class AutofetchLoadListener extends DefaultLoadEventListener {
 			}
 		}
 		else {
-			result = super.loadFromSessionCache( event, entityKey, loadType );
+			result = super.loadFromDatasource( event, persister);
 		}
 
 		extentManager.markAsRoot( result, classname );
 
 		return result;
 	}
+
+
 
 	static Object getResult(
 			List<Path> prefetchPaths, String classname,

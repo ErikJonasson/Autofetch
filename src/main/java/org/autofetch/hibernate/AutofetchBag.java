@@ -33,12 +33,16 @@ import java.util.Set;
  */
 @SuppressWarnings("unchecked")
 public class AutofetchBag extends PersistentBag implements Trackable {
-
+	private long id;
     private final CollectionTracker collectionTracker = new CollectionTracker();
 
     @SuppressWarnings("unused")
     protected AutofetchBag() {
         // Available only for serialization.
+    }
+
+    protected AutofetchBag(Long id) {
+        this.id = id;
     }
 
     public AutofetchBag(SharedSessionContractImplementor arg0) {

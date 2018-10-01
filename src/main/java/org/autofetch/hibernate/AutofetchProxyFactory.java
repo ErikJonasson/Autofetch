@@ -19,6 +19,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.hibernate.HibernateException;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
@@ -35,7 +36,7 @@ import org.hibernate.type.CompositeType;
  */
 public class AutofetchProxyFactory implements ProxyFactory {
 
-	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( AutofetchProxyFactory.class );
+	private static final CoreMessageLogger LOG = CoreLogging.messageLogger(AutofetchProxyFactory.class);
 
 	private static final Class<?>[] NO_CLASSES = new Class<?>[0];
 
@@ -54,42 +55,27 @@ public class AutofetchProxyFactory implements ProxyFactory {
 
 		@SuppressWarnings("unchecked")
 		Iterator<Property> propIter = (Iterator<Property>) persistentClass.getPropertyClosureIterator();
-		while ( propIter.hasNext() ) {
-			this.persistentProperties.add( new org.autofetch.hibernate.Property( propIter.next() ) );
+		while (propIter.hasNext()) {
+			this.persistentProperties.add(new org.autofetch.hibernate.Property(propIter.next()));
 		}
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public void postInstantiate(
-			String entityName,
-			Class persistentClass,
-			Set interfaces,
-			Method getIdentifierMethod,
-			Method setIdentifierMethod,
-			CompositeType componentIdType) throws HibernateException {
+	public void postInstantiate(String entityName, Class persistentClass, Set interfaces, Method getIdentifierMethod,
+			Method setIdentifierMethod, CompositeType componentIdType) throws HibernateException {
 
 		this.entityName = entityName;
 		this.proxiedClass = persistentClass;
-		this.interfaces = (Class<?>[]) interfaces.toArray( NO_CLASSES );
+		this.interfaces = (Class<?>[]) interfaces.toArray(NO_CLASSES);
 		this.getIdentifierMethod = getIdentifierMethod;
 		this.setIdentifierMethod = setIdentifierMethod;
 		this.componentIdType = componentIdType;
 	}
 
 	@Override
-	public HibernateProxy getProxy(Serializable id, SharedSessionContractImplementor session)
-			throws HibernateException {
-		return AutofetchLazyInitializer.getProxy(
-				entityName,
-				proxiedClass,
-				interfaces,
-				getIdentifierMethod,
-				setIdentifierMethod,
-				componentIdType,
-				id,
-				session,
-				persistentProperties
-		);
+	public HibernateProxy getProxy(Serializable id, SharedSessionContractImplementor session) throws HibernateException {
+		return AutofetchLazyInitializer.getProxy(entityName, proxiedClass, interfaces, getIdentifierMethod,
+				setIdentifierMethod, componentIdType, id, session, persistentProperties);
 	}
 }

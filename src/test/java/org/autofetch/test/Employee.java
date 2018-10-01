@@ -35,7 +35,7 @@ public class Employee {
 	private String m_name;
 
 	@JoinColumn(name = "supervisor_id")
-	@ManyToOne(cascade = { CascadeType.ALL })
+	@ManyToOne(cascade = { CascadeType.ALL }, fetch = FetchType.LAZY)
 	private Employee m_supervisor;
 
 	//@CollectionType(type = "org.autofetch.hibernate.AutofetchSetType")
@@ -48,17 +48,17 @@ public class Employee {
 	private Address m_address;
 
 	@JoinColumn(name = "mentor_id")
-	@ManyToOne(cascade = { CascadeType.ALL })
+	@ManyToOne(cascade = { CascadeType.ALL }, fetch = FetchType.LAZY)
 	private Employee m_mentor;
 
-	@ManyToMany(cascade = { CascadeType.ALL })
+	@ManyToMany(cascade = { CascadeType.ALL }, fetch = FetchType.LAZY)
 	@JoinTable(name = "friends", joinColumns = { @JoinColumn(name = "friend_id") }, inverseJoinColumns = { @JoinColumn(name = "befriended_id") })
 	private Set<Employee> m_friends;
 
 	/**
 	 * Default constructor. Needed by Hibernate
 	 */
-	protected Employee() {
+	public Employee() {
 		// Nothing
 	}
 
@@ -139,11 +139,6 @@ public class Employee {
 
 	public void addFriend(Employee friend) {
 		m_friends.add( friend );
-	}
-
-	@Override
-	public int hashCode() {
-		return m_name.hashCode();
 	}
 
 	@Override

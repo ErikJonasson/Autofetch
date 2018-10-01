@@ -14,61 +14,85 @@
  */
 package org.autofetch.hibernate;
 
+import javassist.util.proxy.MethodFilter;
+import javassist.util.proxy.Proxy;
+import javassist.util.proxy.ProxyFactory;
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.hibernate.cfg.Environment;
-import org.hibernate.proxy.ProxyConfiguration;
-
-//Class holding Factories for all classes, Constructors for all classes, sets a callbackfilter on the enhancer (which does what exactly?), Enhancer takes care of callbacks
 public class EntityProxyFactory {
 
-	private static final ConcurrentMap<Class<?>, Constructor<?>> entityConstructorMap = new ConcurrentHashMap<>();
+    private static final CoreMessageLogger LOG = CoreLogging.messageLogger(AutofetchLazyInitializer.class);
 
-	private static <T> Constructor<T> getDefaultConstructor(Class<T> clazz) throws NoSuchMethodException {
-		Constructor<T> constructor = clazz.getDeclaredConstructor();
-		if ( !constructor.isAccessible() ) {
-			constructor.setAccessible( true );
-		}
+    private static final MethodFilter FINALIZE_FILTER = new MethodFilter() {
+        @Override
+        public boolean isHandled(Method m) {
+            // skip finalize methods
+            return !(m.getParameterTypes().length == 0 && m.getName().equals("finalize"));
+        }
+    };
 
-		return constructor;
-	}
+    private static final ConcurrentMap<Class<?>, Class<?>> entityFactoryMap = new ConcurrentHashMap<>();
 
-	static Object getProxyInstance(
-			Class persistentClass,
-			Set<Property> persistentProperties,
-			ExtentManager extentManager)
-			throws NoSuchMethodException, IllegalAccessException, InstantiationException, InvocationTargetException {
+    private static final ConcurrentMap<Class<?>, Constructor<?>> entityConstructorMap = new ConcurrentHashMap<>();
 
-		if ( Modifier.isFinal( persistentClass.getModifiers() ) ) {
-			// Use the default constructor, because final classes cannot be inherited.
-			return useDefaultConstructor( persistentClass );
-		}
+    private static Class<?> getProxyFactory(Class<?> persistentClass, String idMethodName) {
+        if (!entityFactoryMap.containsKey(persistentClass)) {
+            ProxyFactory factory = new ProxyFactory();
+            factory.setSuperclass(persistentClass);
+            factory.setInterfaces(new Class[]{TrackableEntity.class});
+            factory.setFilter(FINALIZE_FILTER);
+            entityFactoryMap.putIfAbsent(persistentClass, factory.createClass());
+        }
 
-		final ProxyConfiguration proxy = (ProxyConfiguration) Environment.getBytecodeProvider()
-				.getProxyFactoryFactory()
-				.buildBasicProxyFactory( persistentClass, new Class[] { TrackableEntity.class } )
-				.getProxy();
-		proxy.$$_hibernate_set_interceptor( new EntityProxyMethodHandler(
-				proxy,
-				persistentClass.getName(),
-				persistentProperties,
-				extentManager
-		) );
-		return proxy;
-	}
+        return entityFactoryMap.get(persistentClass);
+    }
 
-	private static Object useDefaultConstructor(Class<?> clazz)
-			throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-		if ( !entityConstructorMap.containsKey( clazz ) ) {
-			entityConstructorMap.put( clazz, getDefaultConstructor( clazz ) );
-		}
+    private static <T> Constructor<T> getDefaultConstructor(Class<T> clazz) throws NoSuchMethodException {
+        Constructor<T> constructor = clazz.getDeclaredConstructor();
+        if (!constructor.isAccessible()) {
+            constructor.setAccessible(true);
+        }
 
-		final Constructor<?> c = entityConstructorMap.get( clazz );
-		return c.newInstance();
-	}
+        return constructor;
+    }
+
+    public static Object getProxyInstance(Class persistentClass, String idMethodName, Set<Property> persistentProperties,
+                                          ExtentManager extentManager)
+            throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+
+        if (Modifier.isFinal(persistentClass.getModifiers())) {
+            // Use the default constructor, because final classes cannot be inherited.
+            return useDefaultConstructor(persistentClass);
+        }
+
+        Class<?> factory = getProxyFactory(persistentClass, idMethodName);
+        try {
+            final Object proxy = factory.newInstance();
+            ((Proxy) proxy).setHandler(new EntityProxyMethodHandler(persistentProperties, extentManager));
+            return proxy;
+        } catch (IllegalAccessException | InstantiationException e) {
+            return useDefaultConstructor(persistentClass);
+        }
+    }
+
+    private static Object useDefaultConstructor(Class<?> clazz) throws NoSuchMethodException, InstantiationException,
+            InvocationTargetException, IllegalAccessException {
+
+        if (!entityConstructorMap.containsKey(clazz)) {
+            entityConstructorMap.put(clazz, getDefaultConstructor(clazz));
+        }
+
+        final Constructor<?> c = entityConstructorMap.get(clazz);
+
+        return c.newInstance((Object[]) null);
+    }
 }

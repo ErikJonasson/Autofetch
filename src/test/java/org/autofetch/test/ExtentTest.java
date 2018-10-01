@@ -71,13 +71,13 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 	/**
 	 * Test to show correct fetch profile is generated and executed.
 	 */
-	@Test
+	@Test(expected = LazyInitializationException.class)
 	public void testLoadFetchProfile() {
 		em.clearExtentInformation();
-
-		// Execute query multiple times
-//        someAccess(true);
-		Employee dave = someAccess( true );
+		Employee dave = null;
+		for(int i = 0; i < 3; i++) {
+			dave = someAccess( i==0 );
+		}
 
 		// These all should not throw lazy instantiation exception, because
 		// they should have been fetch eagerly
@@ -85,10 +85,10 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 		Assert.assertNotNull( dave.getSupervisor().getSupervisor().getName() );
 		Assert.assertNotEquals( 0, dave.getSupervisor().getSupervisor().getSubordinates().size() );
 		Assert.assertNotNull( dave.getMentor().getName() );
-
+		// Access all the objects that were accessed before, but now instead access something we didn't access during the session
 		// This should throw a lazy instantiation exception
 		try {
-			Assert.assertNotNull( dave.getSupervisor().getSupervisor().getSupervisor().getName() );
+			Assert.assertNotNull(dave.getSupervisor().getSupervisor().getSupervisor());
 			// Shouldn't get here
 			Assert.fail( "Lazy instantion exception not thrown for a property which shouldn't have been fetched" );
 		}
@@ -106,7 +106,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 		// Execute query multiple times to build up extent statistics
 		Employee dave = null;
-		for ( int i = 0; i < 2; i++ ) {
+		for ( int i = 0; i < 4; i++ ) {
 			dave = multipleCollectionAccess( i == 0 );
 		}
 
@@ -127,7 +127,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 		// Execute query multiple times to build up extent statistics
 		Employee dave = null;
-		for ( int i = 0; i < 2; i++ ) {
+		for ( int i = 0; i < 4; i++ ) {
 			dave = initializeCollectionAccess( i == 0 );
 		}
 
@@ -147,7 +147,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 		// Execute query multiple times
 		Employee dave = null;
-		for ( int i = 0; i < 2; i++ ) {
+		for ( int i = 0; i < 3; i++ ) {
 			dave = someAccessCriteria( i == 0 );
 		}
 
@@ -178,7 +178,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 
 		// Execute query multiple times to build up extent statistics
 		Employee dave = null;
-		for ( int i = 0; i < 2; i++ ) {
+		for ( int i = 0; i < 4; i++ ) {
 			dave = multipleCollectionAccessCriteria( i == 0 );
 		}
 
@@ -368,7 +368,7 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 	 * Access mentor for each element in the subordinates collection and check extent statistics.
 	 */
 	@Test
-	public void testCollectionAccess2ndLevel1() {
+	public synchronized void testCollectionAccess2ndLevel1() {
 		em.clearExtentInformation();
 
 		collectionAccess2();
@@ -541,8 +541,8 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 		try (Session sess = getOrCreateEntityManager()) {
 			Transaction tx = sess.beginTransaction();
 			Employee dave = sess.load( Employee.class, daveId );
-			Assert.assertNotNull( dave.getSupervisor().getName() );
 			Assert.assertNotNull( dave.getMentor().getName() );
+			Assert.assertNotNull( dave.getSupervisor().getName() );
 			tx.commit();
 		}
 	}
@@ -656,6 +656,8 @@ public class ExtentTest extends BaseEntityManagerFunctionalTestCase {
 			Employee e1 = new Employee( "Mike", e0, null, new Address( "101 Main St.", "Austin", "Texas" ) );
 			Employee e2 = new Employee( "Sam", e0, e4, new Address( "102 Main St.", "Austin", "Texas" ) );
 			Employee e3 = new Employee( "Dave", e1, e2, new Address( "103 Main St.", "Austin", "Texas" ) );
+			// e3 -> e1 -> e0 -> root
+			// dave.getSupervisor().getSupervisor().getSupervisor();
 			root.addSubordinate( e0 );
 			e0.addSubordinate( e1 );
 			e0.addSubordinate( e2 );
